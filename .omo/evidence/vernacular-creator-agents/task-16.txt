@@ -39,3 +39,21 @@ Result: {'brief_id': 1, 'creators_found': 0, 'suggestions_saved': 0, 'dms_attemp
 
 ## Commit
 `feat(crew): add sequential crew orchestration with token tracking`
+
+## Fix: expose `crew` attribute (2026-07-14)
+- Added `@property crew` (getter + setter) so `InfluencerCampaignCrew().crew` returns the last-built Crew instance.
+- `kickoff()` now assigns `self.crew = Crew(...)` instead of a local `crew = Crew(...)`.
+- `_get_db()` is only called inside `kickoff()`, never during `__init__` or property access.
+
+### Verification
+```
+> python -c "from crew import InfluencerCampaignCrew; c = InfluencerCampaignCrew(); print(type(c.crew)); print('crew attr OK')"
+<class 'NoneType'>
+crew attr OK
+
+> python -c "from crew import InfluencerCampaignCrew; c = InfluencerCampaignCrew(); summary = c.kickoff('test brief', send=False); assert summary['dry_run'] is True; assert summary['dms_attempted'] >= 0; assert summary['total_tokens'] >= 0; print('kickoff OK')"
+kickoff OK
+```
+
+### Commit
+`fix(crew): expose crew instance attribute and verify kickoff`
