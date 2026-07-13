@@ -10,7 +10,7 @@ import requests
 # Use CrewAI's @tool when available; fall back to a pass-through decorator
 # so the module imports and functions remain callable regardless of install state.
 try:
-    from crewai import tool
+    from crewai.tools import tool
 except ImportError:
     def tool(fn):  # type: ignore[misc]
         @wraps(fn)

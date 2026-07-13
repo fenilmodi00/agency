@@ -13,7 +13,7 @@ from database import Database
 # CrewAI @tool with fallback so the module imports regardless of install state
 # ---------------------------------------------------------------------------
 try:
-    from crewai import tool
+    from crewai.tools import tool
 except ImportError:
     class _Tool:  # minimal fallback — provides .name, .description, .run
         def __init__(self, fn):
