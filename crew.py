@@ -48,6 +48,15 @@ class InfluencerCampaignCrew:
         self._crew: Optional[Crew] = None
         self._total_tokens: int = 0
 
+    @property
+    def crew(self) -> Optional[Crew]:
+        """Return the most recently built Crew instance (after kickoff) or None."""
+        return self._crew
+
+    @crew.setter
+    def crew(self, value: Crew) -> None:
+        self._crew = value
+
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
@@ -126,13 +135,13 @@ class InfluencerCampaignCrew:
             discovery_agent = get_discovery_agent()
             discovery_task = get_discovery_task(brief_text, discovery_agent)
 
-            crew = Crew(
+            self.crew = Crew(
                 agents=[discovery_agent],
                 tasks=[discovery_task],
                 process=Process.sequential,
                 verbose=True,
             )
-            result = crew.kickoff()
+            result = self.crew.kickoff()
             self._track_tokens(getattr(result, "token_usage", {}) or {})
 
             ranked_creators = self._safe_json_parse(getattr(result, "raw", "[]"))
@@ -178,13 +187,13 @@ class InfluencerCampaignCrew:
             proposal_agent = get_proposal_agent()
             proposal_task = get_proposal_task(proposals_json_str, proposal_agent)
 
-            crew = Crew(
+            self.crew = Crew(
                 agents=[proposal_agent],
                 tasks=[proposal_task],
                 process=Process.sequential,
                 verbose=True,
             )
-            result = crew.kickoff()
+            result = self.crew.kickoff()
             self._track_tokens(getattr(result, "token_usage", {}) or {})
 
             proposals = self._safe_json_parse(getattr(result, "raw", "[]"))
@@ -235,7 +244,7 @@ class InfluencerCampaignCrew:
                         logger.info("User declined outreach for @%s", uname)
 
                 if approved_proposals:
-                    crew = Crew(
+                    self.crew = Crew(
                         agents=[outreach_agent],
                         tasks=[get_outreach_task(
                             proposals_json=json.dumps(approved_proposals),
@@ -246,7 +255,7 @@ class InfluencerCampaignCrew:
                         process=Process.sequential,
                         verbose=True,
                     )
-                    result = crew.kickoff()
+                    result = self.crew.kickoff()
                     self._track_tokens(getattr(result, "token_usage", {}) or {})
 
                     outreach_results = self._safe_json_parse(
@@ -267,13 +276,13 @@ class InfluencerCampaignCrew:
                             dms_sent += 1
             else:
                 # No per-creator approval — run with all proposals
-                crew = Crew(
+                self.crew = Crew(
                     agents=[outreach_agent],
                     tasks=[outreach_task],
                     process=Process.sequential,
                     verbose=True,
                 )
-                result = crew.kickoff()
+                result = self.crew.kickoff()
                 self._track_tokens(getattr(result, "token_usage", {}) or {})
 
                 # Parse outreach results
