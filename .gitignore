@@ -1,0 +1,7 @@
+.env
+data/*.db
+data/ig_session.json
+__pycache__/
+.python-version
+.omo/evidence/
+.pytest_cache/
