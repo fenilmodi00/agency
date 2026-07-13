@@ -4,13 +4,27 @@ All functions use the singleton from `ig_client.get_ig_client()` —
 no additional Client instances are created.
 """
 
-from typing import Any
+from functools import wraps
 
 from instagrapi.exceptions import UserNotFound
 
-# Use CrewAI's @tool when available; fall back to pass-through so the module
-# imports and functions remain callable regardless of install state.
-from tools.scraper_tools import tool  # noqa: F401
+try:
+    from crewai.tools import tool
+except ImportError:
+    class _Tool:
+        def __init__(self, fn):
+            self.fn = fn
+            self.name = fn.__name__
+            self.description = (fn.__doc__ or "").strip()
+
+        def __call__(self, *args, **kwargs):
+            return self.fn(*args, **kwargs)
+
+        def run(self, *args, **kwargs):
+            return self.fn(*args, **kwargs)
+
+    def tool(fn):
+        return _Tool(fn)
 
 from ig_client import get_ig_client
 
