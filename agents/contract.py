@@ -1,18 +1,10 @@
 """Contract Agent — generates ASCI-compliant collaboration agreements."""
 
-from pathlib import Path
-
 from crewai import Agent
 
 from config import MODEL_CONTRACT
 from llm_client import get_fireworks_llm
 from tools.database_tools import get_brand_brief, get_conversation_details, save_contract
-
-
-def _load_prompt() -> str:
-    """Load the contract prompt from prompts/contract_prompt.txt."""
-    prompt_path = Path(__file__).resolve().parent.parent / "prompts" / "contract_prompt.txt"
-    return prompt_path.read_text(encoding="utf-8")
 
 
 def get_contract_agent() -> Agent:
@@ -22,8 +14,6 @@ def get_contract_agent() -> Agent:
     contract (English + Gujarati summary) with ASCI disclosure placeholders,
     and saves the result.
     """
-    prompt = _load_prompt()
-
     return Agent(
         role="Contract Drafter",
         goal=(
