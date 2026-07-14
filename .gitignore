@@ -5,3 +5,6 @@ __pycache__/
 .python-version
 .omo/evidence/
 .pytest_cache/
+
+# STAR registry state (runtime)
+data/memory/
