@@ -132,12 +132,12 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     # ── Summary output ────────────────────────────────────────────────────
-    print()
-    print("=" * 60)
-    print("CAMPAIGN SUMMARY")
-    print("=" * 60)
-    print(json.dumps(summary, indent=2, default=str))
-    print("=" * 60)
+    summary_json = json.dumps(summary, indent=2, default=str)
+    logger.info("=" * 60)
+    logger.info("CAMPAIGN SUMMARY")
+    logger.info("=" * 60)
+    logger.info("\n{}", summary_json)
+    logger.info("=" * 60)
 
 
 if __name__ == "__main__":
