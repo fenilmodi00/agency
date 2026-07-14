@@ -119,6 +119,16 @@ class Database:
             ).fetchall()
         return [dict(r) for r in rows]
 
+    def get_conversations_by_statuses(self, statuses: tuple[str, ...]) -> list[dict]:
+        """Return all conversations matching any of the given statuses."""
+        placeholders = ",".join("?" for _ in statuses)
+        with self._connect() as conn:
+            rows = conn.execute(
+                f"SELECT * FROM conversations WHERE status IN ({placeholders})",
+                statuses,
+            ).fetchall()
+        return [dict(r) for r in rows]
+
     def update_conversation_status(
         self,
         conversation_id: int,
