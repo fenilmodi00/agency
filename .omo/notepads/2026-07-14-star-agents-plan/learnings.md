@@ -57,3 +57,18 @@
 - All 16 new tests pass.
 - Full suite: 217 collected, 211 passed, 6 failed (pre-existing — 2 registry_tools tests, 4 report agent tests with installed crewai `_Tool` non-callable issue).
 - One failing test (`test_brief_generator::test_registry_get_empty_returns_empty_dict`) was introduced by a previous task's test that expects `{}` but `registry_get` now returns a structured dict for missing records — this is a test from the brief-generator task that's inconsistent with registry_tools behavior.
+
+## Task 5: Target Phase Agents (COMPLETED)
+- Created `agents/target/__init__.py` (empty) + 4 agent files: `competitor_tracker.py`, `campaign_planner.py`, `brief_generator.py`, `budget_optimizer.py`.
+- Created 4 prompt files: `competitor_tracker_prompt.txt`, `campaign_planner_prompt.txt`, `brief_generator_prompt.txt`, `budget_optimizer_prompt.txt`.
+- Created 4 test files: `test_competitor_tracker.py` (7 tests — 3 output shape, 3 mocked tools, 1 task), `test_campaign_planner.py` (6 tests — 3 output shape, 3 mocked tools), `test_brief_generator.py` (7 tests — 3 output shape, 3 mocked tools, 1 task), `test_budget_optimizer.py` (8 tests — 4 output shape, 3 mocked tools, 1 task).
+- Agent files follow `agents/discovery.py` pattern with `_parse_prompt_sections()`, `_load_*_prompt()`, `get_*_agent()`, `get_*_task()`. The one exception is `budget_optimizer.py` which also wraps `calculate_fit_score` with `@tool` (same as `discovery.py`).
+- Prompts distilled from `marketing-skills/influencer/target/*/SKILL.md` files — Role, Goal, Backstory, plus detailed step-by-step Instructions and Output JSON schema.
+- `competitor_tracker.py` uses connector tools: `gdelt_news_mentions`, `youtube_channel_stats`, `tavily_search`, `hn_search`.
+- `campaign_planner.py` uses `query_creators`, `tavily_search`, `registry_get`.
+- `brief_generator.py` uses `registry_get`, `query_creators`.
+- `budget_optimizer.py` uses `calculate_fit_score` (wrapped), `registry_get`.
+- All new tests pass. 4 pre-existing failures remain (report agent factory tests).
+- Full suite: 241 collected, 237 passed, 4 failed (all pre-existing report agent model-assertion tests).
+- All `get_*_task()` functions accept typed parameters matching their domain (e.g., `brand: str`, `budget: float`, `competitors: list[str]`).
+- Commit pending.
