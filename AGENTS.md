@@ -6,23 +6,31 @@
 
 ## OVERVIEW
 
-Python CLI CrewAI system that discovers Instagram creators from a scraper DB, sends Gujarati/Hindi outreach DMs via instagrapi, negotiates rates, and drafts ASCI-compliant contracts. Fireworks AI for LLM, SQLite for state, loguru for logging.
+Python CLI CrewAI system using a 24-agent STAR framework to discover Instagram creators from a scraper DB, send Gujarati/Hindi outreach DMs via instagrapi, negotiate rates, and draft ASCI-compliant contracts. The framework consists of 16 execution agents across 4 phases (Scout, Target, Activate, Report) and 8 protocol registry agents. Fireworks AI for LLM, SQLite for state, loguru for logging.
 
 ## STRUCTURE
 
 ```
 vernacular-creator-agents/
-├── main.py              # CLI entry — dry-run default, --send for real DMs
+├── main.py              # CLI entry — dry-run default, --send for real DMs, --phase for targeted runs
 ├── check_replies.py     # Scheduled reply processing — Negotiator + Contract
-├── crew.py              # Sequential Crew orchestration (Discovery → Proposal → Outreach)
+├── crew.py              # StarCrew orchestration (Phased execution: Scout → Target → Activate → Report)
 ├── config.py            # .env loader — all thresholds, model paths, token budgets
 ├── database.py          # SQLite CRUD — 5 tables, WAL mode, context-managed connections
 ├── ig_client.py         # instagrapi singleton — session, jittered delays, rate limiter, serial lock
 ├── llm_client.py        # Fireworks AI wrapper — OpenAI SDK + CrewAI LLM factory + token tracking
-├── agents/              # 5 CrewAI agents — each exports get_*_agent() + get_*_task()
-├── tools/               # CrewAI @tool functions — scraper, IG, DB, calc, LLM
-├── prompts/             # 5 plain-text prompt files with output JSON schemas
-├── tests/               # 117 pytest tests — all mocked, no real network/LLM
+├── agents/              # STAR Framework Agents
+│   ├── _base.py         # Shared utilities: Agent/Task stubs, tool decorators, prompt parsing
+│   ├── scout/           # Phase 1: Discovery & Filtering
+│   ├── target/          # Phase 2: Content Analysis & Strategy
+│   ├── activate/        # Phase 3: Personalized Outreach
+│   ├── report/          # Phase 4: Campaign Analytics & Summaries
+│   └── protocol/        # 8 Protocol Registry Agents for system state and routing
+├── tools/               # CrewAI @tool functions
+│   ├── connectors/      # 17 specialized connector tool modules
+│   └── registry_tools.py # Tools for protocol registry access
+├── prompts/             # Plain-text prompt files with output JSON schemas
+├── tests/               # 291 pytest tests — all mocked, no real network/LLM
 ├── db/schema.sql        # CREATE TABLE statements + PRAGMA WAL
 ├── docs/research.md     # CrewAI, instagrapi, Fireworks, ASCI research notes
 └── data/                # Runtime: agents.db, ig_session.json, run.log
@@ -32,7 +40,7 @@ vernacular-creator-agents/
 
 | Task | Location | Notes |
 |------|----------|-------|
-| Add a new agent | `agents/` + `prompts/` | Follow existing pattern: `get_*_agent()` + `get_*_task()` + prompt file |
+| Add a new agent | `agents/` + `prompts/` | Follow STAR pattern: add to specific phase folder (`scout/`, `target/`, etc.) |
 | Add a new tool | `tools/` | Use `_Tool` class from `scraper_tools.py` — callable + `.run()` + `.name` |
 | Change DM rate limits | `.env` → `MAX_DMS_PER_DAY`, `DM_DELAY_SECONDS`, `DM_DELAY_JITTER` | Config loaded in `config.py` |
 | Change LLM model | `.env` → `MODEL_DISCOVERY`, `MODEL_PROPOSAL`, etc. | Full Fireworks paths (e.g. `accounts/fireworks/models/glm-5p2`) |
@@ -45,15 +53,16 @@ vernacular-creator-agents/
 
 | Symbol | Type | Location | Role |
 |--------|------|----------|------|
-| `InfluencerCampaignCrew` | class | crew.py | Orchestrates Discovery → Proposal → Outreach; tracks tokens |
+| `StarCrew` | class | crew.py | Orchestrates STAR Framework; supports `run_phase()` and `run_all()` |
 | `Database` | class | database.py | SQLite CRUD for all 5 tables; `:memory:` safe |
 | `get_ig_client` | func | ig_client.py | Singleton instagrapi Client with serial lock + rate limiter |
 | `get_fireworks_llm` | func | llm_client.py | CrewAI LLM factory for Fireworks (OpenAI-compatible) |
 | `format_model_path` | func | llm_client.py | Maps aliases (`glm-5.2`) → full Fireworks paths |
 | `_Tool` | class | tools/scraper_tools.py | Callable wrapper: `__call__` + `.run()` + `.name` + `.description` |
-| `get_discovery_agent` | func | agents/discovery.py | Agent with query_creators, get_creator_details, calculate_fit_score |
-| `get_proposal_agent` | func | agents/proposal.py | Agent with content summary + recent posts tools |
-| `get_outreach_agent` | func | agents/outreach.py | Agent with send_dm, language, quota, save, log tools |
+| `_base.py` | module | agents/_base.py | Shared utilities: Agent/Task stubs, tool decorators, prompt parsing |
+| `get_discovery_agent` | func | agents/discovery.py | Shim for backward compat; delegates to STAR scout agents |
+| `get_proposal_agent` | func | agents/proposal.py | Shim for backward compat; delegates to STAR target agents |
+| `get_outreach_agent` | func | agents/outreach.py | Shim for backward compat; delegates to STAR activate agents |
 | `get_negotiator_agent` | func | agents/negotiator.py | Agent with 8 tools — read threads, send DM, budget, quota |
 | `get_contract_agent` | func | agents/contract.py | Agent with conversation details, brand brief, save contract |
 | `calculate_fit_score` | func | tools/calculation_tools.py | Weighted 0-100 score: niche + language + region + budget + engagement |
@@ -62,6 +71,7 @@ vernacular-creator-agents/
 ## CONVENTIONS
 
 - **`_Tool` class, not `@tool`**: `tools/scraper_tools.py` defines a local `_Tool` class instead of importing `crewai.tools.tool`. The crewai decorator returns non-callable `Tool` objects; `_Tool` is both callable AND has `.run()` for CrewAI compatibility. All tool modules use this pattern or `from crewai.tools import tool` with a fallback.
+- **Shared Utilities**: `agents/_base.py` provides shared Agent/Task stubs, tool decorators, and prompt parsing utilities used across all STAR agents.
 - **Dry-run default**: `main.py` never sends DMs without `--send`. `check_replies.py` never calls Instagram APIs without explicit non-`--dry-run` mode.
 - **Loguru everywhere**: No `print()`, no stdlib `logging`. All output via `from loguru import logger`.
 - **Model paths in .env**: Full Fireworks paths (e.g. `accounts/fireworks/models/glm-5p2`). Aliases resolved by `format_model_path()`.
@@ -102,6 +112,9 @@ python main.py "brief text" --send
 # Per-creator approval
 python main.py "brief text" --send --approve-each
 
+# Targeted phase run (choices: scout, target, activate, report, all)
+python main.py "brief text" --phase scout
+
 # Check replies (dry-run)
 python check_replies.py --dry-run
 
@@ -123,3 +136,4 @@ python test_agents.py
 - **ASCI compliance**: Contract templates include `#ad`/`#sponsored` placeholders and "seek legal counsel" disclaimer. These are templates, not legal documents.
 - **`c.crew` before kickoff**: `InfluencerCampaignCrew._crew` is initialized as a placeholder Crew (or mock) in `__init__`. The real Crew is built during `kickoff()`.
 - **Agent pipeline**: `main.py` runs Discovery → Proposal → Outreach. `check_replies.py` runs Negotiator → Contract separately. Negotiator and Contract are NOT in the main crew.
+- **Dual Agent System**: The project uses the STAR framework for the main pipeline. Thin shims at `agents/discovery.py`, `agents/proposal.py`, and `agents/outreach.py` are maintained for backward compatibility, delegating work to the new phased STAR agents.

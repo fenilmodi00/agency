@@ -2,16 +2,18 @@
 
 ## OVERVIEW
 
-Six modules exposing `@tool`-decorated functions for scraper queries, fit scoring, Instagram DMs, database CRUD, and LLM calls. All use the `_Tool` callable wrapper pattern.
+A comprehensive toolset for the STAR framework, featuring 17 specialized connector modules for external data/APIs and registry tools for system state management. All tools use the `_Tool` callable wrapper pattern.
 
 ## WHERE TO LOOK
 
 | File | Tools | Wraps |
 |------|-------|-------|
-| `scraper_tools.py` | `query_creators`, `get_creator_details`, `get_creator_content_summary`, `get_creator_language`, `get_creator_recent_posts` | External scraper DB (`SCRAPER_DB_PATH`) or REST API (`SCRAPER_API_URL`) |
-| `calculation_tools.py` | `calculate_fit_score`, `estimated_rate`, `calculate_engagement_rate`, `calculate_reach_ratio` | Pure math, no I/O |
-| `instagram_tools.py` | `send_instagram_dm`, `read_instagram_threads`, `read_thread_messages`, `get_profile` | `ig_client.get_ig_client()` singleton |
-| `database_tools.py` | `save_conversation`, `update_conversation_status`, `update_conversation_negotiation`, `get_conversation_history`, `get_conversations_by_status`, `get_brand_budget`, `get_brand_brief`, `get_conversation_details`, `save_contract`, `check_dm_quota`, `log_dm` | `database.Database` via `set_database()` injection |
+| `connectors/` | 17 specialized modules | Scraper DB, Instagram API, Database CRUD, Calculations, LLM utilities |
+| `registry_tools.py` | Registry access tools | Protocol registry for STAR framework state and routing |
+| `scraper_tools.py` | `query_creators`, `get_creator_details`, etc. | External scraper DB (`SCRAPER_DB_PATH`) or REST API (`SCRAPER_API_URL`) |
+| `calculation_tools.py` | `calculate_fit_score`, `estimated_rate`, etc. | Pure math, no I/O |
+| `instagram_tools.py` | `send_instagram_dm`, `read_instagram_threads`, etc. | `ig_client.get_ig_client()` singleton |
+| `database_tools.py` | `save_conversation`, `log_dm`, `save_contract`, etc. | `database.Database` via `set_database()` injection |
 | `llm_tools.py` | `call_fireworks_llm`, `generate_gujarati_text` | `llm_client.call_fireworks_chat()` |
 | `__init__.py` | (empty) | Package marker |
 
