@@ -1,0 +1,79 @@
+2026-07-14 10:40:32 | INFO     | __main__:main:102 - Starting vernacular-creator-agents pipeline
+2026-07-14 10:40:32 | INFO     | __main__:main:103 - Brief: test brief
+2026-07-14 10:40:32 | INFO     | __main__:main:104 - Send mode: False
+2026-07-14 10:40:32 | INFO     | __main__:main:105 - Approve each: False
+2026-07-14 10:40:32 | INFO     | __main__:main:106 - Max creators: 10
+2026-07-14 10:40:32 | INFO     | __main__:main:111 - Database initialised at data/agents.db
+2026-07-14 10:40:32 | INFO     | __main__:main:121 - Dry-run mode — Instagram client not initialised
+2026-07-14 10:41:20 | INFO     | __main__:main:102 - Starting vernacular-creator-agents pipeline
+2026-07-14 10:41:20 | INFO     | __main__:main:103 - Brief: test brief
+2026-07-14 10:41:20 | INFO     | __main__:main:104 - Send mode: False
+2026-07-14 10:41:20 | INFO     | __main__:main:105 - Approve each: False
+2026-07-14 10:41:20 | INFO     | __main__:main:106 - Max creators: 10
+2026-07-14 10:41:20 | INFO     | __main__:main:111 - Database initialised at data/agents.db
+2026-07-14 10:41:20 | INFO     | __main__:main:121 - Dry-run mode — Instagram client not initialised
+2026-07-14 10:43:17 | INFO     | __main__:main:102 - Starting vernacular-creator-agents pipeline
+2026-07-14 10:43:17 | INFO     | __main__:main:103 - Brief: test brief
+2026-07-14 10:43:17 | INFO     | __main__:main:104 - Send mode: False
+2026-07-14 10:43:17 | INFO     | __main__:main:105 - Approve each: False
+2026-07-14 10:43:17 | INFO     | __main__:main:106 - Max creators: 10
+2026-07-14 10:43:17 | INFO     | __main__:main:111 - Database initialised at data/agents.db
+2026-07-14 10:43:17 | INFO     | __main__:main:121 - Dry-run mode — Instagram client not initialised
+2026-07-14 10:45:46 | INFO     | __main__:main:273 - Starting check_replies
+2026-07-14 10:45:46 | INFO     | __main__:main:274 - Dry-run: True
+2026-07-14 10:45:46 | INFO     | __main__:main:275 - Limit: None
+2026-07-14 10:45:46 | INFO     | __main__:main:281 - Database initialised at data/agents.db
+2026-07-14 10:45:46 | INFO     | __main__:main:293 - Found 0 candidate conversations to check
+2026-07-14 10:45:46 | INFO     | __main__:main:401 - Check replies complete: {'checked': 0, 'new_replies': 0, 'counter_offers_sent': 0, 'accepted': 0, 'contracts_generated': 0}
+2026-07-14 10:46:28 | INFO     | __main__:main:273 - Starting check_replies
+2026-07-14 10:46:28 | INFO     | __main__:main:274 - Dry-run: True
+2026-07-14 10:46:28 | INFO     | __main__:main:275 - Limit: None
+2026-07-14 10:46:28 | INFO     | __main__:main:281 - Database initialised at data/agents.db
+2026-07-14 10:46:28 | INFO     | __main__:main:293 - Found 0 candidate conversations to check
+2026-07-14 10:46:28 | INFO     | __main__:main:401 - Check replies complete: {'checked': 0, 'new_replies': 0, 'counter_offers_sent': 0, 'accepted': 0, 'contracts_generated': 0}
+2026-07-14 10:53:29 | INFO     | __main__:main:273 - Starting check_replies
+2026-07-14 10:53:29 | INFO     | __main__:main:274 - Dry-run: True
+2026-07-14 10:53:29 | INFO     | __main__:main:275 - Limit: None
+2026-07-14 10:53:29 | INFO     | __main__:main:281 - Database initialised at data/agents.db
+2026-07-14 10:53:29 | INFO     | __main__:main:293 - Found 0 candidate conversations to check
+2026-07-14 10:53:29 | INFO     | __main__:main:401 - Check replies complete: {'checked': 0, 'new_replies': 0, 'counter_offers_sent': 0, 'accepted': 0, 'contracts_generated': 0}
+2026-07-14 10:56:55 | INFO     | __main__:main:102 - Starting vernacular-creator-agents pipeline
+2026-07-14 10:56:55 | INFO     | __main__:main:103 - Brief: test brief
+2026-07-14 10:56:55 | INFO     | __main__:main:104 - Send mode: False
+2026-07-14 10:56:55 | INFO     | __main__:main:105 - Approve each: False
+2026-07-14 10:56:55 | INFO     | __main__:main:106 - Max creators: 10
+2026-07-14 10:56:55 | INFO     | __main__:main:111 - Database initialised at data/agents.db
+2026-07-14 10:56:55 | INFO     | __main__:main:121 - Dry-run mode — Instagram client not initialised
+2026-07-14 10:57:01 | INFO     | __main__:main:273 - Starting check_replies
+2026-07-14 10:57:01 | INFO     | __main__:main:274 - Dry-run: True
+2026-07-14 10:57:01 | INFO     | __main__:main:275 - Limit: None
+2026-07-14 10:57:01 | INFO     | __main__:main:281 - Database initialised at data/agents.db
+2026-07-14 10:57:01 | INFO     | __main__:main:293 - Found 0 candidate conversations to check
+2026-07-14 10:57:01 | INFO     | __main__:main:401 - Check replies complete: {'checked': 0, 'new_replies': 0, 'counter_offers_sent': 0, 'accepted': 0, 'contracts_generated': 0}
+2026-07-14 11:02:39 | INFO     | __main__:main:273 - Starting check_replies
+2026-07-14 11:02:39 | INFO     | __main__:main:274 - Dry-run: True
+2026-07-14 11:02:39 | INFO     | __main__:main:275 - Limit: None
+2026-07-14 11:02:39 | INFO     | __main__:main:281 - Database initialised at data/agents.db
+2026-07-14 11:02:39 | INFO     | __main__:main:293 - Found 0 candidate conversations to check
+2026-07-14 11:02:39 | INFO     | __main__:main:401 - Check replies complete: {'checked': 0, 'new_replies': 0, 'counter_offers_sent': 0, 'accepted': 0, 'contracts_generated': 0}
+2026-07-14 11:15:29 | INFO     | __main__:main:102 - Starting vernacular-creator-agents pipeline
+2026-07-14 11:15:29 | INFO     | __main__:main:103 - Brief: test brief
+2026-07-14 11:15:29 | INFO     | __main__:main:104 - Send mode: False
+2026-07-14 11:15:29 | INFO     | __main__:main:105 - Approve each: False
+2026-07-14 11:15:29 | INFO     | __main__:main:106 - Max creators: 10
+2026-07-14 11:15:29 | INFO     | __main__:main:111 - Database initialised at data/agents.db
+2026-07-14 11:15:29 | INFO     | __main__:main:121 - Dry-run mode — Instagram client not initialised
+2026-07-14 11:15:42 | INFO     | __main__:main:136 - ============================================================
+2026-07-14 11:15:42 | INFO     | __main__:main:137 - CAMPAIGN SUMMARY
+2026-07-14 11:15:42 | INFO     | __main__:main:138 - ============================================================
+2026-07-14 11:15:42 | INFO     | __main__:main:139 - 
+{
+  "brief_id": 9,
+  "creators_found": 0,
+  "suggestions_saved": 0,
+  "dms_attempted": 0,
+  "dms_sent": 0,
+  "dry_run": true,
+  "total_tokens": 0
+}
+2026-07-14 11:15:42 | INFO     | __main__:main:140 - ============================================================

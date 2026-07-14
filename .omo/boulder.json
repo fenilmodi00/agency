@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "active_work_id": "vernacular-creator-agents-001",
+  "works": {
+    "vernacular-creator-agents-001": {
+      "work_id": "vernacular-creator-agents-001",
+      "active_plan": ".omo/plans/vernacular-creator-agents.md",
+      "plan_name": "vernacular-creator-agents",
+      "session_ids": ["codex:vernacular-creator-agents-001"],
+      "status": "active",
+      "worktree_path": null
+    }
+  }
+}
