@@ -7,21 +7,13 @@ get_*_task().
 
 from pathlib import Path
 
-try:
-    from crewai import Agent
-except ImportError:
-    Agent = object  # type: ignore[misc,assignment]
+from agents._base import Agent, load_prompt
 
 from config import MODEL_PROTOCOL_REGISTRY
 from llm_client import get_fireworks_llm
 from tools.registry_tools import registry_get, registry_propose, registry_verify
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
-
-
-def _load_prompt() -> str:
-    path = _PROMPTS_DIR / "narrative_registry_prompt.txt"
-    return path.read_text(encoding="utf-8")
 
 
 def get_narrative_registry_agent() -> Agent:
@@ -31,14 +23,16 @@ def get_narrative_registry_agent() -> Agent:
     canon facts (positioning, message hierarchy, voice/naming rules,
     proof/claim pointers) through the NDJSON event protocol.
     """
-    prompt = _load_prompt()
+    prompt = load_prompt(_PROMPTS_DIR, "narrative_registry_prompt.txt")
 
     return Agent(
-        role=prompt,
-        goal="Manage canonical brand narrative canon: query projected state, "
-        "submit propose events for complete canon versions, and verify "
-        "narrative stream integrity.",
-        backstory=(
+        role=prompt.get("Role") or "Narrative Registry — L1 Strategy Authority for Brand Narrative Canon",
+        goal=prompt.get("Goal") or (
+            "Manage canonical brand narrative canon: query projected state, "
+            "submit propose events for complete canon versions, and verify "
+            "narrative stream integrity."
+        ),
+        backstory=prompt.get("Backstory") or (
             "I am the narrative-registry principal operating under host-capability "
             "authority. I maintain the L1 strategy authority: one complete, "
             "versioned narrative canon per brand. Every SEO/GEO, social, email, "

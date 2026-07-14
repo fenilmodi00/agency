@@ -7,21 +7,13 @@ get_*_task().
 
 from pathlib import Path
 
-try:
-    from crewai import Agent
-except ImportError:
-    Agent = object  # type: ignore[misc,assignment]
+from agents._base import Agent, load_prompt
 
 from config import MODEL_PROTOCOL_REGISTRY
 from llm_client import get_fireworks_llm
 from tools.registry_tools import registry_get, registry_propose, registry_verify
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
-
-
-def _load_prompt() -> str:
-    path = _PROMPTS_DIR / "channel_registry_prompt.txt"
-    return path.read_text(encoding="utf-8")
 
 
 def get_channel_registry_agent() -> Agent:
@@ -31,14 +23,16 @@ def get_channel_registry_agent() -> Agent:
     (handle, state, governance, cadence, voice adaptation, UGC permission,
     advocate opt-in) through the NDJSON event protocol.
     """
-    prompt = _load_prompt()
+    prompt = load_prompt(_PROMPTS_DIR, "channel_registry_prompt.txt")
 
     return Agent(
-        role=prompt,
-        goal="Manage canonical brand-owned channel records: query projected "
-        "state, submit propose events for channel observations, and verify "
-        "channels stream integrity.",
-        backstory=(
+        role=prompt.get("Role") or "Channel Registry — Canonical Brand-Owned Channel Authority",
+        goal=prompt.get("Goal") or (
+            "Manage canonical brand-owned channel records: query projected "
+            "state, submit propose events for channel observations, and verify "
+            "channels stream integrity."
+        ),
+        backstory=prompt.get("Backstory") or (
             "I am the channel-registry principal operating under host-capability "
             "authority. I curate channel handle, state, governance, cadence, "
             "per-platform voice-adaptation, UGC-permission, and advocate facts "

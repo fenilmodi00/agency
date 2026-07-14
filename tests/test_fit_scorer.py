@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
+from agents._base import parse_prompt_sections
 from agents.scout.fit_scorer import (
-    _parse_prompt_sections,
     _load_fit_scorer_prompt,
     get_fit_scorer_agent,
     get_fit_scorer_task,
@@ -15,13 +15,13 @@ from agents.scout.fit_scorer import (
 
 
 class TestFitScorerPrompt:
-    def test_parse_prompt_sections(self):
+    def testparse_prompt_sections(self):
         text = (
             "## Role\nYou are a fit scorer.\n\n"
             "## Goal\nScore creator fit.\n\n"
             "## Backstory\nScoring expert.\n"
         )
-        sections = _parse_prompt_sections(text)
+        sections = parse_prompt_sections(text)
         assert sections["Role"] == "You are a fit scorer."
         assert sections["Goal"] == "Score creator fit."
         assert sections["Backstory"] == "Scoring expert."
@@ -30,7 +30,7 @@ class TestFitScorerPrompt:
         path = Path(__file__).resolve().parent.parent / "prompts" / "fit_scorer_prompt.txt"
         assert path.exists(), f"Prompt file not found: {path}"
         text = path.read_text(encoding="utf-8")
-        sections = _parse_prompt_sections(text)
+        sections = parse_prompt_sections(text)
         assert sections["Role"], "Role section should be non-empty"
         assert sections["Goal"], "Goal section should be non-empty"
         assert sections["Backstory"], "Backstory section should be non-empty"

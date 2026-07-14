@@ -6,21 +6,13 @@ erasure authority. Read-only utility agent — does NOT export get_*_task().
 
 from pathlib import Path
 
-try:
-    from crewai import Agent
-except ImportError:
-    Agent = object  # type: ignore[misc,assignment]
+from agents._base import Agent, load_prompt
 
 from config import MODEL_PROTOCOL_REGISTRY
 from llm_client import get_fireworks_llm
 from tools.registry_tools import registry_get, registry_propose, registry_verify
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
-
-
-def _load_prompt() -> str:
-    path = _PROMPTS_DIR / "consent_registry_prompt.txt"
-    return path.read_text(encoding="utf-8")
 
 
 def get_consent_registry_agent() -> Agent:
@@ -32,14 +24,16 @@ def get_consent_registry_agent() -> Agent:
     deny-only: a bad producer can cause non-contact but cannot erase,
     restore, or authorize a send.
     """
-    prompt = _load_prompt()
+    prompt = load_prompt(_PROMPTS_DIR, "consent_registry_prompt.txt")
 
     return Agent(
-        role=prompt,
-        goal="Manage consent and live-suppression records: query suppression "
-        "state, submit propose events for opt-in evidence, and enforce "
-        "deny-only immediate suppress for unsubscribes/complaints/bounces.",
-        backstory=(
+        role=prompt.get("Role") or "Consent Registry — Canonical Consent and Live-Suppression Authority",
+        goal=prompt.get("Goal") or (
+            "Manage consent and live-suppression records: query suppression "
+            "state, submit propose events for opt-in evidence, and enforce "
+            "deny-only immediate suppress for unsubscribes/complaints/bounces."
+        ),
+        backstory=prompt.get("Backstory") or (
             "I am the consent-registry principal operating under host-capability "
             "authority. I record opt-in/lawful-basis evidence, immediately "
             "suppress on unsubscribe/hard-bounce/complaint, process data-subject "

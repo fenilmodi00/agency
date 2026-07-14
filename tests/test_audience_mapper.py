@@ -6,8 +6,8 @@ from unittest.mock import patch
 
 import pytest
 
+from agents._base import parse_prompt_sections
 from agents.scout.audience_mapper import (
-    _parse_prompt_sections,
     _load_audience_mapper_prompt,
     get_audience_mapper_agent,
     get_audience_mapper_task,
@@ -15,13 +15,13 @@ from agents.scout.audience_mapper import (
 
 
 class TestAudienceMapperPrompt:
-    def test_parse_prompt_sections(self):
+    def testparse_prompt_sections(self):
         text = (
             "## Role\nYou are a test role.\n\n"
             "## Goal\nYou have a test goal.\n\n"
             "## Backstory\nThis is a test backstory.\n"
         )
-        sections = _parse_prompt_sections(text)
+        sections = parse_prompt_sections(text)
         assert sections["Role"] == "You are a test role."
         assert sections["Goal"] == "You have a test goal."
         assert sections["Backstory"] == "This is a test backstory."
@@ -30,7 +30,7 @@ class TestAudienceMapperPrompt:
         path = Path(__file__).resolve().parent.parent / "prompts" / "audience_mapper_prompt.txt"
         assert path.exists(), f"Prompt file not found: {path}"
         text = path.read_text(encoding="utf-8")
-        sections = _parse_prompt_sections(text)
+        sections = parse_prompt_sections(text)
         assert sections["Role"], "Role section should be non-empty"
         assert sections["Goal"], "Goal section should be non-empty"
         assert sections["Backstory"], "Backstory section should be non-empty"

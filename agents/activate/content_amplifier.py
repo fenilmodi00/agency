@@ -2,55 +2,19 @@
 
 from pathlib import Path
 
+from agents._base import Agent, Task, load_prompt
+
 from config import MODEL_ACTIVATE_AMPLIFIER
 from llm_client import get_fireworks_llm
 from tools.connectors.tavily_tools import tavily_search
 from tools.connectors.firecrawl_tools import firecrawl_scrape
 
-try:
-    from crewai import Agent, Task
-except ImportError:
-    class Agent:  # type: ignore[no-redef]
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
 
-    class Task:  # type: ignore[no-redef]
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
-
-
-_PROMPT_SECTIONS = ("Role", "Goal", "Backstory")
-
-
-def _parse_prompt_sections(text: str) -> dict:
-    """Return a dict mapping section name to content for ## Role/Goal/Backstory."""
-    sections = {name: "" for name in _PROMPT_SECTIONS}
-    current = None
-    lines = []
-
-    for line in text.splitlines():
-        header = line.strip().removeprefix("## ").removeprefix("# ")
-        if header in _PROMPT_SECTIONS:
-            if current is not None:
-                sections[current] = "\n".join(lines).strip()
-                lines = []
-            current = header
-        elif current is not None:
-            lines.append(line)
-
-    if current is not None:
-        sections[current] = "\n".join(lines).strip()
-
-    return sections
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
 
 
 def _load_content_amplifier_prompt() -> dict:
-    path = (
-        Path(__file__).resolve().parent.parent.parent
-        / "prompts" / "content_amplifier_prompt.txt"
-    )
-    text = path.read_text(encoding="utf-8")
-    return _parse_prompt_sections(text)
+    return load_prompt(_PROMPTS_DIR, "content_amplifier_prompt.txt")
 
 
 AMPLIFIER_TASK_DESCRIPTION = """\

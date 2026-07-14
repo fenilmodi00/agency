@@ -9,6 +9,8 @@ Safety:
 
 from pathlib import Path
 
+from agents._base import Agent, Task, load_prompt
+
 from config import MODEL_ACTIVATE_OUTREACH
 from llm_client import get_fireworks_llm
 
@@ -17,50 +19,12 @@ from tools.scraper_tools import get_creator_language
 from tools.database_tools import save_conversation, log_dm, check_dm_quota
 from tools.registry_tools import registry_get, registry_propose
 
-try:
-    from crewai import Agent, Task
-except ImportError:
-    class Agent:  # type: ignore[no-redef]
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
 
-    class Task:  # type: ignore[no-redef]
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
-
-
-_PROMPT_SECTIONS = ("Role", "Goal", "Backstory")
-
-
-def _parse_prompt_sections(text: str) -> dict:
-    """Return a dict mapping section name to content for ## Role/Goal/Backstory."""
-    sections = {name: "" for name in _PROMPT_SECTIONS}
-    current = None
-    lines = []
-
-    for line in text.splitlines():
-        header = line.strip().removeprefix("## ").removeprefix("# ")
-        if header in _PROMPT_SECTIONS:
-            if current is not None:
-                sections[current] = "\n".join(lines).strip()
-                lines = []
-            current = header
-        elif current is not None:
-            lines.append(line)
-
-    if current is not None:
-        sections[current] = "\n".join(lines).strip()
-
-    return sections
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
 
 
 def _load_outreach_manager_prompt() -> dict:
-    path = (
-        Path(__file__).resolve().parent.parent.parent
-        / "prompts" / "outreach_manager_prompt.txt"
-    )
-    text = path.read_text(encoding="utf-8")
-    return _parse_prompt_sections(text)
+    return load_prompt(_PROMPTS_DIR, "outreach_manager_prompt.txt")
 
 
 OUTREACH_MANAGER_PROMPT_EXTRA = """\

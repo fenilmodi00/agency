@@ -6,21 +6,13 @@ memory notes. Does NOT export get_*_task().
 
 from pathlib import Path
 
-try:
-    from crewai import Agent
-except ImportError:
-    Agent = object  # type: ignore[misc,assignment]
+from agents._base import Agent, load_prompt
 
 from config import MODEL_PROTOCOL_REGISTRY
 from llm_client import get_fireworks_llm
 from tools.registry_tools import registry_get, registry_propose, registry_verify
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
-
-
-def _load_prompt() -> str:
-    path = _PROMPTS_DIR / "memory_management_prompt.txt"
-    return path.read_text(encoding="utf-8")
 
 
 def get_memory_management_agent() -> Agent:
@@ -31,14 +23,16 @@ def get_memory_management_agent() -> Agent:
     and manages HOT/WARM/COLD working memory. It never accepts registry
     proposals or writes canonical facts on behalf of an owner.
     """
-    prompt = _load_prompt()
+    prompt = load_prompt(_PROMPTS_DIR, "memory_management_prompt.txt")
 
     return Agent(
-        role=prompt,
-        goal="Manage authorized working memory: initialize runtime directories, "
-        "query registry projections, consolidate non-canonical notes, and "
-        "demote/archive stale entries — all without writing canonical facts.",
-        backstory=(
+        role=prompt.get("Role") or "Memory Management — Project Working Memory Authority",
+        goal=prompt.get("Goal") or (
+            "Manage authorized working memory: initialize runtime directories, "
+            "query registry projections, consolidate non-canonical notes, and "
+            "demote/archive stale entries — all without writing canonical facts."
+        ),
+        backstory=prompt.get("Backstory") or (
             "I am the memory-management principal. I manage the project's "
             "authorized working memory across HOT/WARM/COLD tiers. The seven "
             "registry event streams remain canonical — I never accept proposals "

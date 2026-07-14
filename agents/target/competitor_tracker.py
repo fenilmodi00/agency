@@ -4,8 +4,9 @@ Read-only: uses GDELT news, YouTube channel stats, Tavily search, and HN
 search connectors to gather competitive intelligence.
 """
 
-from functools import wraps
 from pathlib import Path
+
+from agents._base import Agent, Task, load_prompt
 
 from config import MODEL_TARGET_COMPETITOR
 from llm_client import get_fireworks_llm
@@ -15,56 +16,15 @@ from tools.connectors.youtube_tools import youtube_channel_stats
 from tools.connectors.tavily_tools import tavily_search
 from tools.connectors.hn_tools import hn_search
 
-try:
-    from crewai import Agent, Task
-except ImportError:
-    # Minimal stubs so the module imports without crewai installed.
-    class Agent:  # type: ignore[no-redef]
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
-
-    class Task:  # type: ignore[no-redef]
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
-
 
 # ---------------------------------------------------------------------------
-# Prompt parsing — extracts ## Role / ## Goal / ## Backstory sections from
-# a markdown prompt file.
-# ---------------------------------------------------------------------------
-
-_PROMPT_SECTIONS = ("Role", "Goal", "Backstory")
 
 
-def _parse_prompt_sections(text: str) -> dict:
-    """Return a dict mapping section name to content for ## Role/Goal/Backstory."""
-    sections = {name: "" for name in _PROMPT_SECTIONS}
-    current = None
-    lines = []
-
-    for line in text.splitlines():
-        header = line.strip().removeprefix("## ").removeprefix("# ")
-        if header in _PROMPT_SECTIONS:
-            if current is not None:
-                sections[current] = "\n".join(lines).strip()
-                lines = []
-            current = header
-        elif current is not None:
-            lines.append(line)
-
-    if current is not None:
-        sections[current] = "\n".join(lines).strip()
-
-    return sections
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
 
 
 def _load_competitor_tracker_prompt() -> dict:
-    path = (
-        Path(__file__).resolve().parent.parent.parent
-        / "prompts" / "competitor_tracker_prompt.txt"
-    )
-    text = path.read_text(encoding="utf-8")
-    return _parse_prompt_sections(text)
+    return load_prompt(_PROMPTS_DIR, "competitor_tracker_prompt.txt")
 
 
 # ---------------------------------------------------------------------------

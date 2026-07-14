@@ -7,16 +7,22 @@ from typing import Any
 
 import requests
 
-# Use CrewAI's @tool when available; fall back to a pass-through decorator
-# so the module imports and functions remain callable regardless of install state.
-try:
-    from crewai.tools import tool
-except ImportError:
-    def tool(fn):  # type: ignore[misc]
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            return fn(*args, **kwargs)
-        return wrapper
+# Callable tool wrapper — functions remain directly callable AND expose
+# .name, .description, .run() for CrewAI compatibility.
+class _Tool:
+    def __init__(self, fn):
+        self.fn = fn
+        self.name = fn.__name__
+        self.description = (fn.__doc__ or "").strip()
+
+    def __call__(self, *args, **kwargs):
+        return self.fn(*args, **kwargs)
+
+    def run(self, *args, **kwargs):
+        return self.fn(*args, **kwargs)
+
+def tool(fn):
+    return _Tool(fn)
 
 DEFAULT_FILTERS = {
     "follower_min": 8000,

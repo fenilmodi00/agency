@@ -3,8 +3,9 @@
 Read-only: uses fit scoring and registry state.
 """
 
-from functools import wraps
 from pathlib import Path
+
+from agents._base import Agent, Task, tool, load_prompt
 
 from config import MODEL_TARGET_BUDGET
 from llm_client import get_fireworks_llm
@@ -12,74 +13,21 @@ from llm_client import get_fireworks_llm
 from tools.calculation_tools import calculate_fit_score as _calculate_fit_score
 from tools.registry_tools import registry_get
 
-try:
-    from crewai import Agent, Task
-except ImportError:
-    # Minimal stubs so the module imports without crewai installed.
-    class Agent:  # type: ignore[no-redef]
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
-
-    class Task:  # type: ignore[no-redef]
-        def __init__(self, **kwargs):
-            self.__dict__.update(kwargs)
-
 
 # ---------------------------------------------------------------------------
-# Prompt parsing — extracts ## Role / ## Goal / ## Backstory sections from
-# a markdown prompt file.
-# ---------------------------------------------------------------------------
-
-_PROMPT_SECTIONS = ("Role", "Goal", "Backstory")
 
 
-def _parse_prompt_sections(text: str) -> dict:
-    """Return a dict mapping section name to content for ## Role/Goal/Backstory."""
-    sections = {name: "" for name in _PROMPT_SECTIONS}
-    current = None
-    lines = []
-
-    for line in text.splitlines():
-        header = line.strip().removeprefix("## ").removeprefix("# ")
-        if header in _PROMPT_SECTIONS:
-            if current is not None:
-                sections[current] = "\n".join(lines).strip()
-                lines = []
-            current = header
-        elif current is not None:
-            lines.append(line)
-
-    if current is not None:
-        sections[current] = "\n".join(lines).strip()
-
-    return sections
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent.parent / "prompts"
 
 
 def _load_budget_optimizer_prompt() -> dict:
-    path = (
-        Path(__file__).resolve().parent.parent.parent
-        / "prompts" / "budget_optimizer_prompt.txt"
-    )
-    text = path.read_text(encoding="utf-8")
-    return _parse_prompt_sections(text)
+    return load_prompt(_PROMPTS_DIR, "budget_optimizer_prompt.txt")
 
 
 # ---------------------------------------------------------------------------
 # Tool wrapper — calculate_fit_score is not @tool-decorated in the source,
 # so we wrap it so CrewAI can invoke it.
 # ---------------------------------------------------------------------------
-
-try:
-    from crewai.tools import tool
-except ImportError:
-
-    def tool(fn):  # type: ignore[misc]
-        @wraps(fn)
-        def wrapper(*args, **kwargs):
-            return fn(*args, **kwargs)
-
-        wrapper.name = fn.__name__
-        return wrapper
 
 
 @tool
