@@ -165,7 +165,7 @@ def run_negotiator(conversation: dict, dry_run: bool) -> dict:
         logger.warning("  DM quota exhausted — negotiator will not send messages")
 
     from crewai import Crew, Process, Task
-    from agents.negotiator import get_negotiator_agent
+    from agents.activate.outreach_manager import get_outreach_manager_agent as get_negotiator_agent
 
     agent = get_negotiator_agent()
 
@@ -223,7 +223,7 @@ def run_contract_agent(
         return None
 
     from crewai import Crew, Process, Task
-    from agents.contract import get_contract_agent
+    from agents.activate.contract_helper import get_contract_helper_agent as get_contract_agent
 
     agent = get_contract_agent()
 

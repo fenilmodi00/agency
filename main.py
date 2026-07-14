@@ -55,6 +55,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--phase",
+        type=str,
+        choices=["scout", "target", "activate", "report", "all"],
+        default="all",
+        help="Run a specific STAR phase (default: all — full pipeline).",
+    )
+
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         default=False,
@@ -105,6 +113,8 @@ def main(argv: list[str] | None = None) -> None:
     logger.info("Approve each: {}", args.approve_each)
     logger.info("Max creators: {}", args.max_creators)
 
+    logger.info("Phase: {}", args.phase)
+
     # ── Database ──────────────────────────────────────────────────────────
     db = Database(AGENTS_DB_PATH)
     db.init_db()
@@ -121,15 +131,25 @@ def main(argv: list[str] | None = None) -> None:
         logger.info("Dry-run mode — Instagram client not initialised")
 
     # ── Pipeline ──────────────────────────────────────────────────────────
-    from crew import InfluencerCampaignCrew
+    from crew import StarCrew
 
-    crew = InfluencerCampaignCrew()
-    summary = crew.kickoff(
-        brief_text=args.brief,
-        send=args.send,
-        approve_each=args.approve_each,
-        max_creators=args.max_creators,
-    )
+    crew = StarCrew()
+
+    if args.phase == "all":
+        summary = crew.run_all(
+            brief_text=args.brief,
+            send=args.send,
+            approve_each=args.approve_each,
+            max_creators=args.max_creators,
+        )
+    else:
+        summary = crew.run_phase(
+            args.phase,
+            brief_text=args.brief,
+            send=args.send,
+            approve_each=args.approve_each,
+            max_creators=args.max_creators,
+        )
 
     # ── Summary output ────────────────────────────────────────────────────
     summary_json = json.dumps(summary, indent=2, default=str)
