@@ -23,12 +23,13 @@ CREATE TABLE IF NOT EXISTS conversations (
     brief_id INTEGER NOT NULL REFERENCES brand_briefs(id),
     creator_username TEXT NOT NULL,
     thread_id TEXT,
-    status TEXT NOT NULL CHECK(status IN ('outreach_sent','replied','negotiating','declined','accepted','contract_sent')),
+    status TEXT NOT NULL CHECK(status IN ('outreach_sent','replied','negotiating','declined','accepted','contract_sent','expired')),
     last_message_text TEXT,
     last_message_direction TEXT CHECK(last_message_direction IN ('sent','received')),
     negotiation_history TEXT DEFAULT NULL,
     agreed_rate REAL,
     last_message_count INTEGER DEFAULT 0,
+    reminder_count INTEGER DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

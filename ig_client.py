@@ -269,3 +269,124 @@ class InstagramClient:
                     logger.error("user_id_from_username error: {}", exc)
                     return None
             return None
+
+    # ── Thread-based DM (for counter-offers, reminders, follow-ups) ────────
+
+    def send_dm_to_thread(self, thread_id: str, message: str) -> dict:
+        """Send a DM to an existing thread by thread_id.
+
+        Returns: {"success": bool, "thread_id": str|None, "error": str|None}
+        """
+        with self._lock:
+            if not self._logged_in:
+                return {"success": False, "thread_id": None, "error": "Not logged in"}
+
+            if not self._dm_quota_ok():
+                return {
+                    "success": False,
+                    "thread_id": None,
+                    "error": f"Daily DM limit ({MAX_DMS_PER_DAY}) reached",
+                }
+
+            delay = random.uniform(DM_DELAY_MIN, DM_DELAY_MAX)
+            logger.info("Pre-DM thread delay: {:.2f}s", delay)
+            time.sleep(delay)
+
+            for attempt in range(2):
+                try:
+                    dm = self.cl.direct_send(message, thread_ids=[thread_id])
+                    return {
+                        "success": True,
+                        "thread_id": str(getattr(dm, "thread_id", thread_id)),
+                        "error": None,
+                    }
+                except LoginRequired:
+                    if attempt == 0:
+                        self.login()
+                        continue
+                    return {"success": False, "thread_id": None, "error": "LoginRequired"}
+                except PleaseWaitFewMinutes:
+                    wait = random.uniform(15, 60) * (attempt + 1)
+                    logger.warning("Rate limited; backoff {:.1f}s", wait)
+                    time.sleep(wait)
+                    continue
+                except RateLimitError:
+                    wait = random.uniform(15, 60) * (attempt + 1)
+                    logger.warning("RateLimitError; backoff {:.1f}s", wait)
+                    time.sleep(wait)
+                    continue
+                except Exception as exc:
+                    logger.error("send_dm_to_thread error: {}", exc)
+                    return {"success": False, "thread_id": None, "error": str(exc)}
+
+            return {"success": False, "thread_id": None, "error": "max retries exceeded"}
+
+    # ── Unread threads ─────────────────────────────────────────────────────
+
+    def get_unread_threads(self, amount: int = 20) -> list:
+        """Get unread DM threads from inbox."""
+        with self._lock:
+            for attempt in range(2):
+                try:
+                    return list(self.cl.direct_threads(
+                        amount=amount, selected_filter="unread"
+                    ))
+                except LoginRequired:
+                    if attempt == 0:
+                        self.login()
+                        continue
+                    return []
+                except PleaseWaitFewMinutes:
+                    time.sleep(random.uniform(15, 60) * (attempt + 1))
+                    continue
+                except RateLimitError:
+                    time.sleep(random.uniform(15, 60) * (attempt + 1))
+                    continue
+                except Exception as exc:
+                    logger.error("get_unread_threads error: {}", exc)
+                    return []
+            return []
+
+    # ── Pending message requests ───────────────────────────────────────────
+
+    def get_pending_requests(self, amount: int = 20) -> list:
+        """Get pending message request threads (creators who DM'd us first)."""
+        with self._lock:
+            for attempt in range(2):
+                try:
+                    return list(self.cl.direct_requests(amount=amount))
+                except LoginRequired:
+                    if attempt == 0:
+                        self.login()
+                        continue
+                    return []
+                except PleaseWaitFewMinutes:
+                    time.sleep(random.uniform(15, 60) * (attempt + 1))
+                    continue
+                except RateLimitError:
+                    time.sleep(random.uniform(15, 60) * (attempt + 1))
+                    continue
+                except Exception as exc:
+                    logger.error("get_pending_requests error: {}", exc)
+                    return []
+            return []
+
+    # ── Find thread by user_id ─────────────────────────────────────────────
+
+    def find_thread_by_user_id(self, user_id: int) -> str | None:
+        """Find an existing DM thread by participant user_id."""
+        with self._lock:
+            for attempt in range(2):
+                try:
+                    thread = self.cl.direct_thread_by_participants([user_id])
+                    if thread:
+                        return str(getattr(thread, "id", None))
+                    return None
+                except LoginRequired:
+                    if attempt == 0:
+                        self.login()
+                        continue
+                    return None
+                except Exception as exc:
+                    logger.error("find_thread_by_user_id error: {}", exc)
+                    return None

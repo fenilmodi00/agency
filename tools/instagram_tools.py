@@ -139,3 +139,55 @@ def get_profile(username: str) -> dict | None:
         return None
     except Exception:
         return None
+
+
+@tool
+def send_dm_reply(thread_id: str, message: str) -> dict:
+    """Send a reply to an existing Instagram DM thread.
+
+    Returns: {"success": bool, "thread_id": str|None, "error": str|None}
+    """
+    client = get_ig_client()
+    try:
+        return client.send_dm_to_thread(thread_id, message)
+    except Exception as exc:
+        return {"success": False, "thread_id": None, "error": str(exc)}
+
+
+@tool
+def get_unread_threads(amount: int = 20) -> list[dict]:
+    """Get unread DM threads from inbox.
+
+    Returns a list of thread dicts with thread_id, users, last_message.
+    """
+    client = get_ig_client()
+    threads = client.get_unread_threads(amount=amount)
+
+    result: list[dict] = []
+    for t in threads:
+        result.append({
+            "thread_id": str(getattr(t, "thread_id", getattr(t, "id", ""))),
+            "users": [str(getattr(u, "username", "")) for u in (getattr(t, "users", []) or [])],
+            "last_message": getattr(t, "last_message", {}),
+            "last_activity": getattr(t, "last_activity", None),
+        })
+    return result
+
+
+@tool
+def get_pending_requests(amount: int = 20) -> list[dict]:
+    """Get pending message request threads (creators who DM'd us first).
+
+    Returns a list of thread dicts.
+    """
+    client = get_ig_client()
+    threads = client.get_pending_requests(amount=amount)
+
+    result: list[dict] = []
+    for t in threads:
+        result.append({
+            "thread_id": str(getattr(t, "thread_id", getattr(t, "id", ""))),
+            "users": [str(getattr(u, "username", "")) for u in (getattr(t, "users", []) or [])],
+            "last_message": getattr(t, "last_message", {}),
+        })
+    return result

@@ -25,14 +25,24 @@ class Database:
         return conn
 
     def init_db(self):
-        """Create tables from db/schema.sql."""
+        """Create tables from db/schema.sql and run migrations."""
         schema_path = Path(__file__).parent / "db" / "schema.sql"
         with open(schema_path, "r", encoding="utf-8") as f:
             sql = f.read()
         conn = self._connect()
         conn.executescript(sql)
+        self._migrate(conn)
         if self.db_path != ":memory:":
             conn.close()
+
+    def _migrate(self, conn: sqlite3.Connection) -> None:
+        """Add columns that were introduced after initial schema."""
+        existing_columns = {
+            row[1] for row in conn.execute("PRAGMA table_info(conversations)").fetchall()
+        }
+        if "reminder_count" not in existing_columns:
+            conn.execute("ALTER TABLE conversations ADD COLUMN reminder_count INTEGER DEFAULT 0")
+        conn.commit()
 
     # -- brand_briefs --
 
@@ -158,6 +168,32 @@ class Database:
                        status = 'negotiating', updated_at = CURRENT_TIMESTAMP
                    WHERE id = ?""",
                 (negotiation_history, last_message_count, conversation_id),
+            )
+            conn.commit()
+            return cur.rowcount > 0
+
+    def get_stale_conversations(self, days: int = 3, max_reminders: int = 2) -> list[dict]:
+        """Return conversations with no reply in N days that still need reminders."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """SELECT * FROM conversations
+                   WHERE status IN ('outreach_sent', 'negotiating')
+                     AND reminder_count < ?
+                     AND thread_id IS NOT NULL
+                     AND datetime(updated_at) < datetime('now', ?)
+                   ORDER BY updated_at ASC""",
+                (max_reminders, f"-{days} days"),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    def increment_reminder_count(self, conversation_id: int) -> bool:
+        with self._connect() as conn:
+            cur = conn.execute(
+                """UPDATE conversations
+                   SET reminder_count = reminder_count + 1,
+                       updated_at = CURRENT_TIMESTAMP
+                   WHERE id = ?""",
+                (conversation_id,),
             )
             conn.commit()
             return cur.rowcount > 0

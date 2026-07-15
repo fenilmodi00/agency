@@ -368,7 +368,30 @@ def main(argv: list[str] | None = None) -> None:
 
         elif action == "counter":
             counter_offers_sent += 1
-            logger.info("  Counter-offer sent")
+            response_msg = negotiator_result.get("response")
+            if response_msg and not args.dry_run:
+                thread_id = conv.get("thread_id")
+                if thread_id:
+                    from ig_client import get_ig_client
+
+                    ig_client = get_ig_client()
+                    send_result = ig_client.send_dm_to_thread(thread_id, response_msg)
+                    if send_result.get("success"):
+                        logger.info("  Counter-offer sent to @{}", username)
+                        from tools.database_tools import log_dm
+
+                        log_dm(
+                            creator_username=username,
+                            thread_id=thread_id,
+                            message_text=response_msg,
+                            direction="sent",
+                        )
+                    else:
+                        logger.error("  Counter-offer FAILED: {}", send_result.get("error"))
+                else:
+                    logger.warning("  No thread_id — cannot send counter-offer")
+            else:
+                logger.info("  Counter-offer queued (dry-run or no response)")
 
         # Log received messages (only in live mode)
         if not args.dry_run:

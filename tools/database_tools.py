@@ -127,6 +127,20 @@ def get_conversations_by_status(status: str) -> list:
     return db.get_conversations_by_status(status)
 
 
+@tool
+def get_stale_conversations(days: int = 3, max_reminders: int = 2) -> list:
+    """Return conversations with no reply in N days that still need reminders."""
+    db = _get_db()
+    return db.get_stale_conversations(days=days, max_reminders=max_reminders)
+
+
+@tool
+def increment_reminder_count(conversation_id: int) -> bool:
+    """Increment the reminder count for a conversation. Returns True if updated."""
+    db = _get_db()
+    return db.increment_reminder_count(conversation_id)
+
+
 # ---------------------------------------------------------------------------
 # Brand brief tools
 # ---------------------------------------------------------------------------
