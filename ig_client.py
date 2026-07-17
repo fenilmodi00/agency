@@ -18,6 +18,7 @@ from instagrapi.exceptions import (
     LoginRequired,
     PleaseWaitFewMinutes,
     RateLimitError,
+    UserError,
     UserNotFound,
 )
 
@@ -68,11 +69,12 @@ class InstagramClient:
     __init__ only creates the Client — login() must be called explicitly.
     """
 
-    def __init__(self) -> None:
+    def __init__(self, session_file_path: str | None = None) -> None:
         self.cl = Client()
         self._lock = threading.Lock()
         self._dm_timestamps: list[float] = []
         self._logged_in = False
+        self._session_file_path = session_file_path
 
     # ── Login ──────────────────────────────────────────────────────────────
 
@@ -83,10 +85,12 @@ class InstagramClient:
             logger.warning("login() called without credentials; skip")
             return False
 
+        session_path = self._session_file_path or IG_SESSION_FILE
+
         try:
-            if os.path.exists(IG_SESSION_FILE):
-                logger.info("Loading existing session from {}", IG_SESSION_FILE)
-                self.cl.load_settings(IG_SESSION_FILE)
+            if os.path.exists(session_path):
+                logger.info("Loading existing session from {}", session_path)
+                self.cl.load_settings(session_path)
                 self._logged_in = True
                 return True
 
@@ -103,10 +107,11 @@ class InstagramClient:
             return False
 
     def _dump_settings(self) -> None:
-        os.makedirs(os.path.dirname(IG_SESSION_FILE) or ".", exist_ok=True)
-        self.cl.dump_settings(IG_SESSION_FILE)
+        session_path = self._session_file_path or IG_SESSION_FILE
+        os.makedirs(os.path.dirname(session_path) or ".", exist_ok=True)
+        self.cl.dump_settings(session_path)
         try:
-            os.chmod(IG_SESSION_FILE, 0o600)
+            os.chmod(session_path, 0o600)
         except OSError:
             pass  # Windows may ignore chmod
 
@@ -390,3 +395,155 @@ class InstagramClient:
                 except Exception as exc:
                     logger.error("find_thread_by_user_id error: {}", exc)
                     return None
+
+    # ── Profile / Media / Insights ─────────────────────────────────────────
+
+    def fetch_profile(self, username: str | None = None) -> dict | None:
+        """Fetch profile info for a given username, or own profile if username is None.
+
+        Returns dict with keys: pk, username, full_name, biography, external_url,
+        follower_count, following_count, media_count, is_private, is_verified,
+        profile_pic_url, is_business. Returns None on UserNotFound.
+        """
+        with self._lock:
+            for attempt in range(2):
+                try:
+                    if username is not None:
+                        user = self.cl.user_info_from_username(username)
+                    else:
+                        user = self.cl.user_info(self.cl.user_id)
+                    return {
+                        "pk": getattr(user, "pk", None),
+                        "username": getattr(user, "username", ""),
+                        "full_name": getattr(user, "full_name", ""),
+                        "biography": getattr(user, "biography", ""),
+                        "external_url": getattr(user, "external_url", ""),
+                        "follower_count": getattr(user, "follower_count", 0),
+                        "following_count": getattr(user, "following_count", 0),
+                        "media_count": getattr(user, "media_count", 0),
+                        "is_private": getattr(user, "is_private", False),
+                        "is_verified": getattr(user, "is_verified", False),
+                        "profile_pic_url": str(getattr(user, "profile_pic_url", "")),
+                        "is_business": getattr(user, "is_business", False),
+                    }
+                except LoginRequired:
+                    if attempt == 0:
+                        logger.warning("Session expired, re-login and retry")
+                        self.login()
+                        continue
+                    return None
+                except UserNotFound:
+                    logger.info("User not found: {}", username)
+                    return None
+                except PleaseWaitFewMinutes:
+                    time.sleep(random.uniform(15, 60) * (attempt + 1))
+                    continue
+                except RateLimitError:
+                    time.sleep(random.uniform(15, 60) * (attempt + 1))
+                    continue
+                except Exception as exc:
+                    logger.error("fetch_profile error: {}", exc)
+                    return None
+            return None
+
+    def fetch_media(self, amount: int = 25) -> list[dict]:
+        """Fetch the authenticated user's own media.
+
+        Returns list of dicts with keys: pk, caption_text, media_type,
+        thumbnail_url, media_url, permalink, taken_at (ISO string),
+        like_count, comment_count, view_count, play_count.
+        """
+        with self._lock:
+            for attempt in range(2):
+                try:
+                    medias = self.cl.user_medias(self.cl.user_id, amount=amount)
+                    return [
+                        {
+                            "pk": getattr(m, "pk", None),
+                            "caption_text": getattr(m, "caption_text", ""),
+                            "media_type": getattr(m, "media_type", 0),
+                            "thumbnail_url": str(getattr(m, "thumbnail_url", "") or ""),
+                            "media_url": str(getattr(m, "media_url", "") or ""),
+                            "permalink": getattr(m, "permalink", ""),
+                            "taken_at": (
+                                getattr(m, "taken_at", None).isoformat()
+                                if getattr(m, "taken_at", None)
+                                else None
+                            ),
+                            "like_count": getattr(m, "like_count", 0),
+                            "comment_count": getattr(m, "comment_count", 0),
+                            "view_count": getattr(m, "view_count", 0),
+                            "play_count": getattr(m, "play_count", 0),
+                        }
+                        for m in medias
+                    ]
+                except LoginRequired:
+                    if attempt == 0:
+                        logger.warning("Session expired, re-login and retry")
+                        self.login()
+                        continue
+                    return []
+                except PleaseWaitFewMinutes:
+                    time.sleep(random.uniform(15, 60) * (attempt + 1))
+                    continue
+                except RateLimitError:
+                    time.sleep(random.uniform(15, 60) * (attempt + 1))
+                    continue
+                except Exception as exc:
+                    logger.error("fetch_media error: {}", exc)
+                    return []
+            return []
+
+    def fetch_insights(self) -> dict | None:
+        """Fetch account insights (requires Business account).
+
+        Returns dict with insights data, or {"error": "Business account required for insights"}
+        if the account is not a Business account.
+        """
+        with self._lock:
+            for attempt in range(2):
+                try:
+                    return self.cl.insights_account()
+                except LoginRequired:
+                    if attempt == 0:
+                        logger.warning("Session expired, re-login and retry")
+                        self.login()
+                        continue
+                    return None
+                except UserError:
+                    logger.info("Account is not a Business account — insights unavailable")
+                    return {"error": "Business account required for insights"}
+                except PleaseWaitFewMinutes:
+                    time.sleep(random.uniform(15, 60) * (attempt + 1))
+                    continue
+                except RateLimitError:
+                    time.sleep(random.uniform(15, 60) * (attempt + 1))
+                    continue
+                except Exception as exc:
+                    logger.error("fetch_insights error: {}", exc)
+                    return None
+            return None
+
+    def logout(self) -> bool:
+        """Log out from Instagram and delete the session file.
+
+        Returns True on success.
+        """
+        with self._lock:
+            try:
+                self.cl.logout()
+                self._logged_in = False
+
+                session_path = self._session_file_path or IG_SESSION_FILE
+                if os.path.exists(session_path):
+                    try:
+                        os.remove(session_path)
+                        logger.info("Removed session file: {}", session_path)
+                    except OSError as exc:
+                        logger.warning("Could not remove session file {}: {}", session_path, exc)
+
+                logger.info("Logged out successfully")
+                return True
+            except Exception as exc:
+                logger.error("logout error: {}", exc)
+                return False
