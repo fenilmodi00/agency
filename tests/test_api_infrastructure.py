@@ -51,38 +51,43 @@ def test_health_endpoint(client):
 
 
 def test_login_stub(client):
-    """POST /login returns 501 + {"status": "not_implemented"}."""
+    """POST /login returns 401 (auth required, endpoint implemented)."""
     response = client.post("/login", json={"clerk_user_id": "user_1"})
-    assert response.status_code == 501
-    assert response.json() == {"status": "not_implemented"}
+    assert response.status_code == 401
+    data = response.json()
+    assert "error" in data or "detail" in data
 
 
 def test_profile_stub(client):
-    """GET /profile returns 501."""
+    """GET /profile returns 401 (auth required, endpoint implemented)."""
     response = client.get("/profile")
-    assert response.status_code == 501
-    assert response.json() == {"status": "not_implemented"}
+    assert response.status_code == 401
+    data = response.json()
+    assert "error" in data or "detail" in data
 
 
 def test_media_stub(client):
-    """GET /media returns 501."""
+    """GET /media returns 401 (auth required, endpoint implemented)."""
     response = client.get("/media")
-    assert response.status_code == 501
-    assert response.json() == {"status": "not_implemented"}
+    assert response.status_code == 401
+    data = response.json()
+    assert "error" in data or "detail" in data
 
 
 def test_insights_stub(client):
-    """GET /insights returns 501."""
+    """GET /insights returns 401 (auth required, endpoint implemented)."""
     response = client.get("/insights")
-    assert response.status_code == 501
-    assert response.json() == {"status": "not_implemented"}
+    assert response.status_code == 401
+    data = response.json()
+    assert "error" in data or "detail" in data
 
 
 def test_disconnect_stub(client):
-    """POST /disconnect returns 501."""
+    """POST /disconnect returns 401 (auth required, endpoint implemented)."""
     response = client.post("/disconnect")
-    assert response.status_code == 501
-    assert response.json() == {"status": "not_implemented"}
+    assert response.status_code == 401
+    data = response.json()
+    assert "error" in data or "detail" in data
 
 
 # ── 3. Clerk JWT verification ────────────────────────────────────────────────

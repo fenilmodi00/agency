@@ -12,8 +12,9 @@ from ig_client import InstagramClient, get_ig_client
 
 
 @pytest.fixture
-def client():
-    """Return a fresh InstagramClient with no login."""
+def client(mocker):
+    """Return a fresh InstagramClient with mocked instagrapi Client."""
+    mocker.patch("ig_client.Client")
     return InstagramClient()
 
 
