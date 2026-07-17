@@ -1,10 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useUser } from '@clerk/clerk-expo';
 import { tablesDB } from '@/lib/appwrite';
 import { Query } from 'appwrite';
 import { DATABASE_ID, TABLES } from '@/lib/constants';
 import type { Creator, DealThread, Deal } from '@/lib/types';
-
-const TEST_USER_ID = 'test-user-id';
 
 interface DashboardData {
   creator: Creator | null;
@@ -20,6 +19,8 @@ interface UseDashboardResult {
 }
 
 export function useDashboard(): UseDashboardResult {
+  const { user } = useUser();
+  const clerkUserId = user?.id ?? '';
   const [data, setData] = useState<DashboardData>({
     creator: null,
     threads: [],
@@ -29,6 +30,7 @@ export function useDashboard(): UseDashboardResult {
   const [error, setError] = useState<string | null>(null);
 
   const fetchDashboard = useCallback(async () => {
+    if (!clerkUserId) return;
     setLoading(true);
     setError(null);
 
@@ -36,7 +38,7 @@ export function useDashboard(): UseDashboardResult {
       const creatorsResult = await tablesDB.listRows({
         databaseId: DATABASE_ID,
         tableId: TABLES.CREATORS,
-        queries: [Query.equal('clerk_user_id', TEST_USER_ID), Query.limit(1)],
+        queries: [Query.equal('clerk_user_id', clerkUserId), Query.limit(1)],
       });
 
       if (creatorsResult.rows.length === 0) {
@@ -96,7 +98,7 @@ export function useDashboard(): UseDashboardResult {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clerkUserId]);
 
   useEffect(() => {
     fetchDashboard();

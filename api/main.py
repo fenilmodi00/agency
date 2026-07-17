@@ -7,15 +7,25 @@ require a valid Clerk JWT for every route except /health.
 
 from __future__ import annotations
 
+import os
+import uuid
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from loguru import logger
 from pydantic import BaseModel
-from instagrapi.exceptions import LoginRequired
+from instagrapi.exceptions import (
+    LoginRequired,
+    BadPassword,
+    PleaseWaitFewMinutes,
+    RateLimitError,
+    ClientThrottledError,
+    ClientError,
+    TwoFactorRequired,
+)
 
 from api.auth import get_clerk_user_id
 from api.session_manager import get_session_manager
@@ -35,7 +45,10 @@ async def lifespan(app: FastAPI):
     """Startup/shutdown context for the FastAPI app."""
     logger.info("API server starting up")
     yield
-    logger.info("API server shutting down")
+    # Graceful shutdown: logout all active Instagram sessions
+    sm = get_session_manager()
+    logged_out = sm.logout_all()
+    logger.info("API server shutting down (logged out {} sessions)", logged_out)
 
 
 app = FastAPI(
@@ -45,11 +58,12 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS: allow all origins for MVP (Expo Go sends from different origins)
+# CORS: read allowed origins from env, default to wildcard for MVP dev
+_cors_origins = os.getenv("CORS_ORIGINS", "*").split(",")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=_cors_origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -61,6 +75,15 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     if isinstance(exc.detail, dict):
         return JSONResponse(status_code=exc.status_code, content=exc.detail)
     return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
+@app.middleware("http")
+async def request_id_middleware(request: Request, call_next):
+    """Attach a unique request_id to every request for log correlation."""
+    request_id = request.headers.get("X-Request-ID", str(uuid.uuid4())[:8])
+    response = await call_next(request)
+    response.headers["X-Request-ID"] = request_id
+    return response
 
 
 def require_clerk_user_id(authorization: str | None = Header(None)) -> str:
@@ -164,8 +187,20 @@ async def login(request: LoginRequest, clerk_user_id: str = Depends(require_cler
         client = get_session_manager().get_or_create(
             clerk_user_id, request.username, request.password
         )
-    except Exception as exc:
-        logger.exception("Instagram login failed for {}", clerk_user_id)
+    except (BadPassword, TwoFactorRequired) as exc:
+        logger.warning("Instagram login rejected for {}: {}", clerk_user_id, type(exc).__name__)
+        raise HTTPException(
+            status_code=401,
+            detail={"error": "invalid_credentials", "message": str(exc)},
+        ) from exc
+    except (PleaseWaitFewMinutes, RateLimitError, ClientThrottledError) as exc:
+        logger.warning("Instagram rate limited for {}", clerk_user_id)
+        raise HTTPException(
+            status_code=429,
+            detail={"error": "rate_limited", "message": "Instagram rate limit reached. Try again later."},
+        ) from exc
+    except ClientError as exc:
+        logger.warning("Instagram client error for {}: {}", clerk_user_id, exc)
         raise HTTPException(
             status_code=502,
             detail={"error": "instagram_login_failed", "message": str(exc)},
@@ -210,7 +245,10 @@ async def profile(clerk_user_id: str = Depends(require_clerk_user_id)):
 
 
 @app.get("/media")
-async def media(amount: int = 25, clerk_user_id: str = Depends(require_clerk_user_id)):
+async def media(
+    amount: int = Query(default=25, ge=1, le=100),
+    clerk_user_id: str = Depends(require_clerk_user_id),
+):
     """Return the authenticated user's Instagram media."""
     client = _require_client(clerk_user_id)
 
@@ -241,7 +279,10 @@ async def insights(clerk_user_id: str = Depends(require_clerk_user_id)):
         ) from exc
 
     if insights is None:
-        insights = {"error": "Unable to fetch insights"}
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "insights_unavailable", "message": "Unable to fetch insights"},
+        )
 
     return insights
 

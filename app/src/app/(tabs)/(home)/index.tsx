@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { YStack, Text, Button, Spinner, H2, XStack, Input } from 'tamagui';
 import { useUser } from '@clerk/clerk-expo';
-import { loginInstagram, disconnectInstagram, fetchMedia, fetchInsights } from '@/lib/instagram';
+import {
+  loginInstagram,
+  disconnectInstagram,
+  fetchMedia,
+  fetchInsights,
+  fetchProfile,
+} from '@/lib/instagram';
 
 export default function HomeScreen() {
   const { user } = useUser();
@@ -16,14 +22,16 @@ export default function HomeScreen() {
     async function checkConnection() {
       if (!user) return;
       try {
-        const { fetchProfile } = await import('@/lib/instagram');
         const profile = await fetchProfile();
         if (profile) {
           setIsConnected(true);
           setUsername(profile.username);
         }
-      } catch {
-        // Not connected — show login form
+      } catch (e) {
+        const message = e instanceof Error ? e.message : '';
+        if (message === 'session_expired') {
+          setIsConnected(false);
+        }
       }
     }
     checkConnection();
@@ -39,13 +47,11 @@ export default function HomeScreen() {
       setUsername(profile.username);
       setIgUsername('');
       setIgPassword('');
-      // Fetch media and insights after login
       try { await fetchMedia(); } catch { /* non-critical */ }
       try { await fetchInsights(); } catch { /* non-critical */ }
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Failed to connect';
       if (message === 'Invalid credentials') setError('Invalid Instagram credentials');
-      else if (message === 'session_expired') { setIsConnected(false); setError(null); }
       else if (message === 'Instagram login failed') setError('Could not connect to Instagram. Check 2FA or try again.');
       else setError(message);
     } finally {
@@ -54,13 +60,19 @@ export default function HomeScreen() {
   }
 
   async function handleDisconnect() {
+    setIsLoading(true);
+    setError(null);
     try {
       await disconnectInstagram();
       setIsConnected(false);
       setUsername(null);
+      setIgUsername('');
+      setIgPassword('');
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : 'Failed to disconnect';
       setError(message);
+    } finally {
+      setIsLoading(false);
     }
   }
 

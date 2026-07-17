@@ -13,8 +13,15 @@ import { account } from './appwrite';
  * All endpoints use JWT auth via getAuthHeaders() (x-appwrite-user-jwt header).
  */
 
-// FastAPI base URL (ngrok URL for local dev, production URL for deployed)
-const API_BASE_URL = process.env.EXPO_PUBLIC_IG_API_BASE_URL || '';
+const API_BASE_URL = process.env.EXPO_PUBLIC_IG_API_BASE_URL;
+
+if (!API_BASE_URL) {
+  throw new Error(
+    'EXPO_PUBLIC_IG_API_BASE_URL is not set. Add it to your .env file (e.g. http://localhost:8000 or ngrok URL).'
+  );
+}
+
+const FETCH_TIMEOUT_MS = 15_000;
 
 /**
  * Returns auth headers with Appwrite JWT for FastAPI endpoint calls.
@@ -25,6 +32,23 @@ async function getAuthHeaders(): Promise<HeadersInit> {
     'x-appwrite-user-jwt': jwt.jwt,
     'Content-Type': 'application/json',
   };
+}
+
+/**
+ * Wraps fetch with an AbortController timeout.
+ * Aborts after FETCH_TIMEOUT_MS if no response.
+ */
+async function fetchWithTimeout(
+  url: string,
+  options: RequestInit
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 /**
@@ -87,7 +111,7 @@ export async function loginInstagram(
   password: string
 ): Promise<InstagramProfileResponse> {
   const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/login`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/login`, {
     method: 'POST',
     headers,
     body: JSON.stringify({
@@ -115,7 +139,7 @@ export async function loginInstagram(
  */
 export async function fetchProfile(): Promise<InstagramProfileResponse> {
   const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/profile`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/profile`, {
     method: 'GET',
     headers,
   });
@@ -133,28 +157,47 @@ export async function fetchProfile(): Promise<InstagramProfileResponse> {
 /**
  * Fetches the current user's Instagram media from the FastAPI backend.
  * Returns up to 25 media items.
+ *
+ * @throws Error("session_expired") on 401
  */
 export async function fetchMedia(): Promise<InstagramMediaResponse[]> {
   const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/media?amount=25`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/media?amount=25`, {
     method: 'GET',
     headers,
   });
 
-  return response.json();
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('session_expired');
+    }
+    throw new Error(`Fetch media failed: ${response.statusText}`);
+  }
+
+  const body = await response.json();
+  return body.data ?? [];
 }
 
 /**
  * Fetches Instagram insights from the FastAPI backend.
  * Returns insights data or an error object — callers handle gracefully.
- * Does NOT throw on non-200 or business-account errors.
+ *
+ * @throws Error("session_expired") on 401
+ * @throws Error on other non-200 responses
  */
 export async function fetchInsights(): Promise<InstagramInsightsResponse> {
   const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/insights`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/insights`, {
     method: 'GET',
     headers,
   });
+
+  if (!response.ok) {
+    if (response.status === 401) {
+      throw new Error('session_expired');
+    }
+    throw new Error(`Fetch insights failed: ${response.statusText}`);
+  }
 
   return response.json();
 }
@@ -164,7 +207,7 @@ export async function fetchInsights(): Promise<InstagramInsightsResponse> {
  */
 export async function disconnectInstagram(): Promise<void> {
   const headers = await getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/disconnect`, {
+  const response = await fetchWithTimeout(`${API_BASE_URL}/disconnect`, {
     method: 'POST',
     headers,
   });
@@ -172,38 +215,4 @@ export async function disconnectInstagram(): Promise<void> {
   if (!response.ok) {
     throw new Error(`Disconnect failed: ${response.statusText}`);
   }
-}
-
-/**
- * Validates whether an account type string is BUSINESS or CREATOR.
- */
-export function isValidAccountType(
-  accountType: string
-): accountType is 'BUSINESS' | 'CREATOR' {
-  return accountType === 'BUSINESS' || accountType === 'CREATOR';
-}
-
-/**
- * Maps Instagram account type strings to the app's internal type.
- */
-export function mapAccountType(
-  igAccountType: string
-): 'business' | 'creator' | 'personal' {
-  switch (igAccountType) {
-    case 'BUSINESS':
-      return 'business';
-    case 'CREATOR':
-      return 'creator';
-    default:
-      return 'personal';
-  }
-}
-
-/**
- * Returns an ISO date string 60 days from now.
- */
-export function getTokenExpiryDate(): string {
-  const now = new Date();
-  now.setDate(now.getDate() + 60);
-  return now.toISOString();
 }

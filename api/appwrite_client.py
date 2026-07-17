@@ -13,6 +13,7 @@ from appwrite.client import Client
 from appwrite.exception import AppwriteException
 from appwrite.permission import Permission
 from appwrite.role import Role
+from appwrite.query import Query
 from appwrite.services.databases import Databases
 from loguru import logger
 
@@ -66,16 +67,11 @@ class AppwriteClient:
             result = self._databases.list_documents(
                 database_id=APPWRITE_DATABASE_ID,
                 collection_id=APPWRITE_CREATORS_TABLE_ID,
-                queries=[],
+                queries=[Query.equal("clerk_user_id", clerk_user_id), Query.limit(1)],
             )
             documents = result.get("documents", [])
 
-            # Find existing row by clerk_user_id
-            existing = None
-            for doc in documents:
-                if doc.get("clerk_user_id") == clerk_user_id:
-                    existing = doc
-                    break
+            existing = documents[0] if documents else None
 
             if existing:
                 doc_id = existing["$id"]
@@ -120,15 +116,11 @@ class AppwriteClient:
             result = self._databases.list_documents(
                 database_id=APPWRITE_DATABASE_ID,
                 collection_id=APPWRITE_CREATORS_TABLE_ID,
-                queries=[],
+                queries=[Query.equal("clerk_user_id", clerk_user_id), Query.limit(1)],
             )
             documents = result.get("documents", [])
 
-            existing = None
-            for doc in documents:
-                if doc.get("clerk_user_id") == clerk_user_id:
-                    existing = doc
-                    break
+            existing = documents[0] if documents else None
 
             if not existing:
                 logger.warning("No creator profile found for {} to clear", clerk_user_id)

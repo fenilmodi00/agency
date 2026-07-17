@@ -1,3 +1,7 @@
+// Set required env vars before any module imports
+process.env.EXPO_PUBLIC_IG_API_BASE_URL = 'http://localhost:8000';
+process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY = 'pk_test_mock_key';
+
 // Mock @clerk/expo
 jest.mock('@clerk/expo', () => ({
   useAuth: () => ({

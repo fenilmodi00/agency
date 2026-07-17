@@ -26,13 +26,9 @@ import {
   fetchMedia,
   fetchInsights,
   disconnectInstagram,
-  isValidAccountType,
-  mapAccountType,
-  getTokenExpiryDate,
 } from '@/lib/instagram';
 import { account } from '@/lib/appwrite';
 
-// Get reference to the mocked createJWT
 const mockCreateJWT = account.createJWT as jest.Mock;
 
 beforeEach(() => {
@@ -109,7 +105,6 @@ describe('loginInstagram', () => {
 
     const result = await loginInstagram(clerkId, username, password);
 
-    // Verify fetch was called correctly
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain('/login');
@@ -118,7 +113,6 @@ describe('loginInstagram', () => {
     expect(options.headers['x-appwrite-user-jwt']).toBe('mock-jwt');
     expect(options.headers['Content-Type']).toBe('application/json');
 
-    // Verify body contains correct fields
     const body = JSON.parse(options.body);
     expect(body).toEqual({
       clerk_id: clerkId,
@@ -220,7 +214,7 @@ describe('fetchMedia', () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      json: async () => mockMedia,
+      json: async () => ({ data: mockMedia }),
     } as Response);
 
     const result = await fetchMedia();
@@ -237,15 +231,36 @@ describe('fetchMedia', () => {
     expect(result).toHaveLength(2);
   });
 
-  it('malformed_input: handles empty response body', async () => {
+  it('session expired: throws session_expired on 401', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 401,
+      json: async () => ({}),
+    } as Response);
+
+    await expect(fetchMedia()).rejects.toThrow('session_expired');
+  });
+
+  it('non-ok: throws on 500', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({}),
+    } as Response);
+
+    await expect(fetchMedia()).rejects.toThrow();
+  });
+
+  it('malformed_input: handles empty data array', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: true,
       status: 200,
-      json: async () => null,
+      json: async () => ({ data: [] }),
     } as Response);
 
     const result = await fetchMedia();
-    expect(result).toBeNull();
+    expect(result).toEqual([]);
   });
 });
 
@@ -268,7 +283,7 @@ describe('fetchInsights', () => {
     expect(result).toEqual(mockInsights);
   });
 
-  it('non-business: returns error object as-is (no throw)', async () => {
+  it('non-business: returns error object as-is (no throw on 200)', async () => {
     const businessError = { error: 'Business account required for insights' };
     mockFetch.mockResolvedValueOnce({
       ok: true,
@@ -281,16 +296,25 @@ describe('fetchInsights', () => {
     expect(result).toEqual(businessError);
   });
 
-  it('malformed_input: handles non-200 without throwing', async () => {
+  it('session expired: throws session_expired on 401', async () => {
     mockFetch.mockResolvedValueOnce({
       ok: false,
-      status: 500,
+      status: 401,
       json: async () => ({}),
     } as Response);
 
-    const result = await fetchInsights();
-    // fetchInsights does NOT throw (per plan — returns raw response)
-    expect(result).toBeDefined();
+    await expect(fetchInsights()).rejects.toThrow('session_expired');
+  });
+
+  it('non-ok: throws on 500', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      statusText: 'Internal Server Error',
+      json: async () => ({}),
+    } as Response);
+
+    await expect(fetchInsights()).rejects.toThrow();
   });
 });
 
@@ -323,35 +347,8 @@ describe('disconnectInstagram', () => {
   });
 });
 
-describe('retained utility functions', () => {
-  it('isValidAccountType: validates BUSINESS and CREATOR', () => {
-    expect(isValidAccountType('BUSINESS')).toBe(true);
-    expect(isValidAccountType('CREATOR')).toBe(true);
-    expect(isValidAccountType('PERSONAL')).toBe(false);
-    expect(isValidAccountType('UNKNOWN')).toBe(false);
-  });
-
-  it('mapAccountType: maps Instagram types to app types', () => {
-    expect(mapAccountType('BUSINESS')).toBe('business');
-    expect(mapAccountType('CREATOR')).toBe('creator');
-    expect(mapAccountType('PERSONAL')).toBe('personal');
-    expect(mapAccountType('UNKNOWN')).toBe('personal');
-  });
-
-  it('getTokenExpiryDate: returns ISO date ~60 days from now', () => {
-    const result = getTokenExpiryDate();
-    const parsed = new Date(result);
-    expect(parsed.getTime()).toBeGreaterThan(Date.now());
-    // Should be approx 60 days from now (±1 day tolerance)
-    const sixtyDaysFromNow = Date.now() + 60 * 24 * 60 * 60 * 1000;
-    const diff = Math.abs(parsed.getTime() - sixtyDaysFromNow);
-    expect(diff).toBeLessThan(24 * 60 * 60 * 1000); // within 1 day
-  });
-});
-
 describe('getAuthHeaders', () => {
   it('calls account.createJWT and returns correct headers', async () => {
-    // Reset the default before-each JWT to use a custom one for verification
     mockCreateJWT.mockResolvedValueOnce({ jwt: 'custom-jwt-value' });
 
     mockFetch.mockResolvedValue({

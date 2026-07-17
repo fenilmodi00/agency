@@ -1,11 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useUser } from '@clerk/clerk-expo';
 import { tablesDB } from '@/lib/appwrite';
 import { Query, Channel } from 'appwrite';
 import { DATABASE_ID, TABLES } from '@/lib/constants';
 import type { DealThread, Message } from '@/lib/types';
 import { useRealtimeSubscription } from '@/lib/realtime';
-
-const TEST_USER_ID = 'test-user-id';
 
 interface ThreadWithPreview extends DealThread {
   lastMessagePreview: string;
@@ -19,11 +18,14 @@ interface UseThreadsResult {
 }
 
 export function useThreads(): UseThreadsResult {
+  const { user } = useUser();
+  const clerkUserId = user?.id ?? '';
   const [threads, setThreads] = useState<ThreadWithPreview[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchThreads = useCallback(async () => {
+    if (!clerkUserId) return;
     setLoading(true);
     setError(null);
 
@@ -31,7 +33,7 @@ export function useThreads(): UseThreadsResult {
       const creatorsResult = await tablesDB.listRows({
         databaseId: DATABASE_ID,
         tableId: TABLES.CREATORS,
-        queries: [Query.equal('clerk_user_id', TEST_USER_ID), Query.limit(1)],
+        queries: [Query.equal('clerk_user_id', clerkUserId), Query.limit(1)],
       });
 
       if (creatorsResult.rows.length === 0) {
@@ -96,7 +98,7 @@ export function useThreads(): UseThreadsResult {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [clerkUserId]);
 
   useEffect(() => {
     fetchThreads();

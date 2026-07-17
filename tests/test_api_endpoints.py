@@ -11,6 +11,7 @@ from unittest.mock import MagicMock
 import jwt
 import pytest
 from fastapi.testclient import TestClient
+from instagrapi.exceptions import ClientError
 
 JWT_SECRET = "test-clerk-key"
 
@@ -112,8 +113,8 @@ def test_login_happy(client, mock_session_manager, mock_appwrite_client, mock_ig
 
 
 def test_login_ig_login_fail(client, mock_session_manager, mock_appwrite_client):
-    """If session_manager raises an exception, return 502 instagram_login_failed."""
-    mock_session_manager.get_or_create.side_effect = Exception("bad credentials")
+    """If session_manager raises a ClientError, return 502 instagram_login_failed."""
+    mock_session_manager.get_or_create.side_effect = ClientError("bad credentials")
 
     token = make_jwt("user_123")
     response = client.post(

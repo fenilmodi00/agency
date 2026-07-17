@@ -106,6 +106,23 @@ class SessionManager:
             logger.info("Removed session for {}", clerk_user_id)
             return True
 
+    def logout_all(self) -> int:
+        """Logout all active sessions. Called during graceful shutdown.
+
+        Returns:
+            Number of sessions successfully logged out.
+        """
+        count = 0
+        with self._lock:
+            while self._clients:
+                _uid, client = self._clients.popitem()
+                try:
+                    client.logout()
+                    count += 1
+                except Exception:
+                    logger.exception("Error logging out client during shutdown")
+        return count
+
 
 # Singleton
 _session_manager: SessionManager | None = None

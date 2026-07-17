@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useUser } from '@clerk/clerk-expo';
 import { tablesDB } from '@/lib/appwrite';
 import { DATABASE_ID, TABLES } from '@/lib/constants';
 import { Query } from 'appwrite';
 import type { Creator, DealThread } from '@/lib/types';
 import { fetchMedia, fetchInsights } from '@/lib/instagram';
 import type { InstagramMediaResponse, InstagramInsightsResponse } from '@/lib/instagram';
-
-const TEST_USER_ID = 'test-user-id';
 
 export interface PostRow {
   $id?: string;
@@ -31,6 +30,8 @@ interface UseCreatorProfileResult {
 }
 
 export function useCreatorProfile(): UseCreatorProfileResult {
+  const { user } = useUser();
+  const clerkUserId = user?.id ?? '';
   const [creator, setCreator] = useState<Creator | null>(null);
   const [dealThreads, setDealThreads] = useState<DealThread[]>([]);
   const [recentReels, setRecentReels] = useState<PostRow[]>([]);
@@ -41,6 +42,7 @@ export function useCreatorProfile(): UseCreatorProfileResult {
   const cancelledRef = useRef(false);
 
   const fetchProfile = useCallback(async () => {
+    if (!clerkUserId) return;
     cancelledRef.current = false;
 
     try {
@@ -51,7 +53,7 @@ export function useCreatorProfile(): UseCreatorProfileResult {
         databaseId: DATABASE_ID,
         tableId: TABLES.CREATORS,
         queries: [
-          Query.equal('clerk_user_id', TEST_USER_ID),
+          Query.equal('clerk_user_id', clerkUserId),
           Query.limit(1),
         ],
       });
@@ -132,7 +134,7 @@ export function useCreatorProfile(): UseCreatorProfileResult {
         setIsLoading(false);
       }
     }
-  }, []);
+  }, [clerkUserId]);
 
   useEffect(() => {
     fetchProfile();
