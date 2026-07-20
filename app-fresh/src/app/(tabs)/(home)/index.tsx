@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { YStack, Text, XStack, Input, ScrollView } from 'tamagui';
 import { useUser, useAuth } from '@clerk/clerk-expo';
 import { useRouter } from 'expo-router';
 import Animated from 'react-native-reanimated';
+import { View, Text, ScrollView, TextInput } from '@/tw';
+import { cn, clayInput } from '@/tw/cn';
 import { useDashboard } from '@/hooks/useDashboard';
 import {
   loginInstagram,
@@ -113,178 +114,168 @@ export default function HomeScreen() {
   // Loading state
   if (isLoading || dashboardLoading) {
     return (
-      <YStack flex={1} justify="center" items="center" p="$4" gap="$2" background="$canvas">
+      <View className="flex-1 items-center justify-center gap-2 bg-canvas p-4">
         <ClaySpinner size={40} label="Loading..." />
-      </YStack>
+      </View>
     );
   }
 
   // Error state
   if (error || dashboardError) {
     return (
-      <YStack flex={1} justify="center" items="center" p="$4" gap="$4" background="$canvas">
+      <View className="flex-1 items-center justify-center gap-4 bg-canvas p-4">
         <ErrorShake>
-          <Text color="$red10" text="center" fontSize={14}>
+          <Text className="text-error text-center text-sm">
             {error ?? dashboardError}
           </Text>
         </ErrorShake>
         <ClayAnimatedButton variant="secondary" onPress={refreshDashboard}>
           Retry
         </ClayAnimatedButton>
-      </YStack>
+      </View>
     );
   }
 
   // Not connected — login form
   if (!isConnected) {
     return (
-      <YStack flex={1} justify="center" items="center" p="$4" gap="$4" background="$canvas">
-        <Text fontSize="$display-sm" fontWeight="500" letterSpacing={-0.5} text="center">
+      <View className="flex-1 items-center justify-center gap-4 bg-canvas p-4">
+        <Text className="text-display-sm font-medium tracking-[-0.5px] text-center">
           Welcome to Creator Workspace
         </Text>
         <Entrance delay={0}>
-          <YStack items="center" gap="$4" width="100%" maxW={320}>
-            <Text text="center" color="$muted">Connect your Instagram account to start creating.</Text>
-            <Input
+          <View className="w-full max-w-[320px] items-center gap-4">
+            <Text className="text-center text-muted">Connect your Instagram account to start creating.</Text>
+            <TextInput
               placeholder="Instagram username"
               value={igUsername}
               onChangeText={setIgUsername}
               autoCapitalize="none"
               autoCorrect={false}
-              width="100%"
-              height={48}
-              background="$canvas"
-              borderColor="$hairline"
-              rounded="$md"
-              px="$4"
+              className={cn(clayInput, 'w-full')}
             />
-            <Input
+            <TextInput
               placeholder="Instagram password"
               value={igPassword}
               onChangeText={setIgPassword}
               secureTextEntry
               autoCapitalize="none"
               autoCorrect={false}
-              width="100%"
-              height={48}
-              background="$canvas"
-              borderColor="$hairline"
-              rounded="$md"
-              px="$4"
+              className={cn(clayInput, 'w-full')}
             />
             <ClayAnimatedButton variant="primary" fullWidth onPress={handleLogin}>
               Connect
             </ClayAnimatedButton>
-          </YStack>
+          </View>
         </Entrance>
         {error && (
-          <Text color="$red10" text="center" fontSize={12}>
+          <Text className="text-error text-center text-xs">
             {error}
           </Text>
         )}
-      </YStack>
+      </View>
     );
   }
 
   // Empty state — connected but no dashboard data
   if (!dashboardData || (!dashboardData.deals?.length && !dashboardData.threads?.length)) {
     return (
-      <YStack flex={1} justify="center" items="center" p="$4" gap="$4" background="$canvas">
-        <Text fontSize="$display-sm" fontWeight="500" letterSpacing={-0.5} text="center">
+      <View className="flex-1 items-center justify-center gap-4 bg-canvas p-4">
+        <Text className="text-display-sm font-medium tracking-[-0.5px] text-center">
           Welcome, @{username}
         </Text>
-        <Text color="$muted" text="center" fontSize={14}>
+        <Text className="text-center text-muted text-sm">
           No campaign data yet — your agent will start outreach soon
         </Text>
         <ClayAnimatedButton variant="secondary" onPress={refreshDashboard}>
           Refresh
         </ClayAnimatedButton>
-      </YStack>
+      </View>
     );
   }
 
   // Connected with data
   return (
-    <ScrollView width="100%" background="$canvas">
-      <YStack gap="$4" p="$4">
+    <ScrollView className="w-full bg-canvas">
+      <View className="gap-4 p-4">
         {/* Welcome header */}
-        <YStack>
-          <Text fontSize="$display-sm" fontWeight="500" letterSpacing={-0.5}>
+        <View>
+          <Text className="text-display-sm font-medium tracking-[-0.5px]">
             Welcome, @{username}
           </Text>
-          <Text color="$muted">Here's your campaign overview</Text>
-        </YStack>
+          <Text className="text-muted">Here's your campaign overview</Text>
+        </View>
 
         {/* Stats cards */}
-        <XStack gap="$3" flexWrap="wrap">
+        <View className="flex-row flex-wrap gap-3">
           <ClayFeatureCard
             color="pink"
-            padding="$lg"
+            padding="p-6"
             title={String(dashboardData?.deals?.length ?? 0)}
             description="Active Deals"
           />
           <ClayFeatureCard
             color="teal"
-            padding="$lg"
+            padding="p-6"
             title={String(dashboardData?.threads?.filter(t => t.unread_count > 0)?.length ?? 0)}
             description="Unread Threads"
           />
           <ClayFeatureCard
             color="ochre"
-            padding="$lg"
+            padding="p-6"
             title={String(dashboardData?.threads?.filter(t => t.status === 'content_pending')?.length ?? 0)}
             description="Pending Content"
           />
-        </XStack>
+        </View>
 
         {/* Quick-link cards */}
-        <XStack gap="$3">
-          <YStack flex={1}>
+        <View className="flex-row gap-3">
+          <View className="flex-1">
             <ClayAnimatedCard delay={200} onPress={() => router.push('/(tabs)/(messages)')}>
-              <YStack items="center" gap="$2">
-                <Text fontWeight="600">View Messages</Text>
-                <Text fontSize={12} color="$muted">Check your threads</Text>
-              </YStack>
+              <View className="items-center gap-2">
+                <Text className="font-semibold">View Messages</Text>
+                <Text className="text-xs text-muted">Check your threads</Text>
+              </View>
             </ClayAnimatedCard>
-          </YStack>
-          <YStack flex={1}>
+          </View>
+          <View className="flex-1">
             <ClayAnimatedCard delay={200} onPress={() => router.push('/(tabs)/(profile)')}>
-              <YStack items="center" gap="$2">
-                <Text fontWeight="600">View Profile</Text>
-                <Text fontSize={12} color="$muted">Your creator profile</Text>
-              </YStack>
+              <View className="items-center gap-2">
+                <Text className="font-semibold">View Profile</Text>
+                <Text className="text-xs text-muted">Your creator profile</Text>
+              </View>
             </ClayAnimatedCard>
-          </YStack>
-        </XStack>
+          </View>
+        </View>
 
         {/* Recent activity */}
-        <YStack gap="$2">
-          <Text fontWeight="600" fontSize="$title-md">Recent Activity</Text>
+        <View className="gap-2">
+          <Text className="text-title-md font-semibold">Recent Activity</Text>
           {dashboardData?.threads?.slice(0, 3).map((thread, index) => (
             <ClayAnimatedCard key={thread.$id} delay={index * 100}>
-              <YStack gap="$1">
-                <Text fontWeight="600">{thread.campaign_title}</Text>
-                <XStack justify="space-between">
-                  <Text fontSize={12} color="$muted">{thread.status}</Text>
-                  <Text fontSize={12} color="$muted">
+              <View className="gap-1">
+                <Text className="font-semibold">{thread.campaign_title}</Text>
+                <View className="flex-row justify-between">
+                  <Text className="text-xs text-muted">{thread.status}</Text>
+                  <Text className="text-xs text-muted">
                     {thread.unread_count > 0 ? `${thread.unread_count} unread` : ''}
                   </Text>
-                </XStack>
-              </YStack>
+                </View>
+              </View>
             </ClayAnimatedCard>
           ))}
           {(!dashboardData?.threads || dashboardData.threads.length === 0) && (
-            <Text color="$muted" fontSize={12}>No recent activity</Text>
+            <Text className="text-xs text-muted">No recent activity</Text>
           )}
-        </YStack>
+        </View>
 
         {/* Disconnect button */}
-        <YStack mt="$4">
+        <View className="mt-4">
           <ClayAnimatedButton variant="secondary" onPress={handleDisconnect}>
             Disconnect Instagram
           </ClayAnimatedButton>
-        </YStack>
-      </YStack>
+        </View>
+      </View>
     </ScrollView>
   );
 }

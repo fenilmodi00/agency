@@ -1,56 +1,41 @@
 import React from 'react';
 import Animated from 'react-native-reanimated';
-import { YStack, Text, type ColorTokens } from 'tamagui';
+import { View, Text } from '@/tw';
+import { cn, clayFeatureCardBase } from '@/tw/cn';
 import { useEntranceAnimation } from '@/hooks/useClayAnimations';
 
-type ClayCardColor = 'pink' | 'teal' | 'lavender' | 'peach' | 'ochre' | 'cream';
+type Color = 'pink' | 'teal' | 'lavender' | 'peach' | 'ochre' | 'cream';
 
-interface ClayFeatureCardProps {
-  children?: React.ReactNode;
-  color: ClayCardColor;
-  title?: string;
-  description?: string;
-  delay?: number;
-  padding?: '$lg' | '$xl';
-}
-
-const COLOR_MAP: Record<ClayCardColor, { bg: ColorTokens; text: ColorTokens }> = {
-  pink: { bg: '$brand-pink', text: '$on-dark' },
-  teal: { bg: '$brand-teal', text: '$on-dark' },
-  lavender: { bg: '$brand-lavender', text: '$ink' },
-  peach: { bg: '$brand-peach', text: '$ink' },
-  ochre: { bg: '$brand-ochre', text: '$ink' },
-  cream: { bg: '$surface-card', text: '$ink' },
+const COLOR: Record<Color, { bg: string; text: string }> = {
+  pink: { bg: 'bg-brand-pink', text: 'text-on-dark' },
+  teal: { bg: 'bg-brand-teal', text: 'text-on-dark' },
+  lavender: { bg: 'bg-brand-lavender', text: 'text-ink' },
+  peach: { bg: 'bg-brand-peach', text: 'text-ink' },
+  ochre: { bg: 'bg-brand-ochre', text: 'text-ink' },
+  cream: { bg: 'bg-surface-card', text: 'text-ink' },
 };
 
-export function ClayFeatureCard({
-  children, color, title, description, delay = 0, padding = '$xl',
-}: ClayFeatureCardProps) {
-  const { animatedStyle } = useEntranceAnimation(delay);
-  const styles = COLOR_MAP[color];
+// Transitional: accept legacy space tokens until screens are migrated (Phase 4)
+type Padding = 'p-6' | 'p-8' | '$lg' | '$xl';
+const LEGACY_PADDING: Record<string, string> = { '$lg': 'p-6', '$xl': 'p-8' };
 
+export function ClayFeatureCard({
+  children, color, title, description, delay = 0, padding = 'p-8',
+}: {
+  children?: React.ReactNode; color: Color; title?: string; description?: string;
+  delay?: number; padding?: Padding;
+}) {
+  const { animatedStyle } = useEntranceAnimation(delay);
+  const s = COLOR[color];
+  const paddingClass = LEGACY_PADDING[padding] ?? padding;
   return (
     <Animated.View style={[{ flex: 1 }, animatedStyle]}>
-      <YStack
-        background={styles.bg}
-        rounded="$xl"
-        p={padding}
-        gap="$3"
-      >
-        {title && (
-          <Text color={styles.text} fontSize="$title-md" fontWeight="600" letterSpacing={-0.3}>
-            {title}
-          </Text>
-        )}
-        {description && (
-          <Text color={styles.text} fontSize="$body-sm" lineHeight={22} opacity={0.9}>
-            {description}
-          </Text>
-        )}
+      <View className={cn(clayFeatureCardBase, s.bg, s.text, paddingClass)}>
+        {title && <Text className="text-title-md font-semibold tracking-[-0.3px]">{title}</Text>}
+        {description && <Text className="text-body-sm opacity-90">{description}</Text>}
         {children}
-      </YStack>
+      </View>
     </Animated.View>
   );
 }
-
 export default ClayFeatureCard;

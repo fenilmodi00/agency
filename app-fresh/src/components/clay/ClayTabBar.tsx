@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { Pressable, Dimensions } from 'react-native';
 import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
-import { YStack, XStack, Text } from 'tamagui';
+import { View, Text } from '@/tw';
+import { cn } from '@/tw/cn';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 
@@ -29,8 +30,8 @@ export function ClayTabBar({ state, navigation, insets }: BottomTabBarProps) {
   }));
 
   return (
-    <YStack background="$canvas" borderTopWidth={1} borderTopColor="$hairline" pb={insets.bottom}>
-      <XStack height={64}>
+    <View className="bg-canvas border-t border-hairline" style={{ paddingBottom: insets.bottom }}>
+      <View className="flex-row h-16">
         {TABS.map((tab, index) => {
           const isFocused = state.index === index;
           return (
@@ -49,7 +50,12 @@ export function ClayTabBar({ state, navigation, insets }: BottomTabBarProps) {
               }}
             >
               <Ionicons name={tab.icon} size={24} color={isFocused ? '#0a0a0a' : '#6a6a6a'} />
-              <Text fontSize="$caption" fontWeight={isFocused ? '600' : '500'} color={isFocused ? '$ink' : '$muted'} mt="$xs">
+              <Text
+                className={cn(
+                  'text-caption mt-1',
+                  isFocused ? 'font-semibold text-ink' : 'font-medium text-muted'
+                )}
+              >
                 {tab.label}
               </Text>
             </Pressable>
@@ -61,8 +67,8 @@ export function ClayTabBar({ state, navigation, insets }: BottomTabBarProps) {
             backgroundColor: '#0a0a0a', borderTopLeftRadius: 3, borderTopRightRadius: 3,
           }, indicatorStyle]}
         />
-      </XStack>
-    </YStack>
+      </View>
+    </View>
   );
 }
 

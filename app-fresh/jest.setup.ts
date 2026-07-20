@@ -205,46 +205,50 @@ jest.mock('react-native-reanimated', () => {
   };
 });
 
-// Mock tamagui
-jest.mock('tamagui', () => {
+// Mock @/tw — className is a no-op in jest (no CSS runtime)
+jest.mock('@/tw', () => {
   const React = require('react');
-  const { Text: RNText, View, ScrollView, Image, TouchableOpacity } = require('react-native');
-  
+  const { View, Text, ScrollView, Pressable, TextInput, TouchableHighlight } = require('react-native');
+  const passthrough = (Comp: any) => (props: any) => React.createElement(Comp, props);
   return {
-    createTamagui: jest.fn(() => ({
-      config: {},
-    })),
-    TamaguiProvider: ({ children }: { children: React.ReactNode }) => children,
-    useTheme: () => ({}),
-    YStack: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, children),
-    XStack: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, children),
-    Stack: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, children),
-    Text: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
-    Button: ({ children, onPress, disabled, ...props }: any) =>
-      React.createElement(
-        TouchableOpacity,
-        { onPress, disabled, ...props },
-        React.createElement(RNText, null, children)
-      ),
-    Input: (props: any) => {
-      const { TextInput } = require('react-native');
-      return React.createElement(TextInput, props);
-    },
-    H1: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
-    H2: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
-    H3: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
-    H4: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
-    Paragraph: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
-    Label: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
-    ScrollView: ({ children }: { children: React.ReactNode }) => React.createElement(ScrollView, null, children),
-    Card: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, children),
-    Spinner: () => null,
-    Separator: () => null,
-    Avatar: Object.assign(() => React.createElement(Image, null), {
-      Image: (props: any) => React.createElement(Image, props),
-      Fallback: (props: any) => React.createElement(View, props),
-    }),
-    Heading: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
-    Sheet: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, children),
+    View: passthrough(View),
+    Text: passthrough(Text),
+    ScrollView: passthrough(ScrollView),
+    Pressable: passthrough(Pressable),
+    TextInput: passthrough(TextInput),
+    TouchableHighlight: passthrough(TouchableHighlight),
+    Link: ({ children, ...props }: any) => React.createElement(Text, props, children),
+    useCSSVariable: () => '#000000',
+    AnimatedScrollView: passthrough(ScrollView),
   };
 });
+
+// Mock @/tw/image (uses RN Image, not expo-image per D11)
+jest.mock('@/tw/image', () => {
+  const React = require('react');
+  const { Image } = require('react-native');
+  return { Image: (props: any) => React.createElement(Image, props) };
+});
+
+// Mock @/tw/animated
+jest.mock('@/tw/animated', () => {
+  const Reanimated = require('react-native-reanimated');
+  return { AnimatedView: Reanimated.View || Reanimated.default?.View || Reanimated };
+});
+
+// Mock @/tw/cn
+jest.mock('@/tw/cn', () => ({
+  cn: (...args: any[]) => args.filter(Boolean).join(' '),
+  clayInput: '', clayCard: '', clayFeatureCardBase: '', clayButtonBase: '',
+}));
+
+// Mock nativewind + react-native-css at the module level
+jest.mock('nativewind', () => ({
+  useUnstableNativeVariable: () => '#000000',
+  VariableContextProvider: ({ children }: any) => children,
+  styled: (Comp: any) => Comp,
+}));
+jest.mock('react-native-css', () => ({
+  useCssElement: (_: any, props: any) => props,
+  useNativeVariable: () => '#000000',
+}));

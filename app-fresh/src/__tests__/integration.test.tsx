@@ -64,26 +64,6 @@ jest.mock('@/hooks/useDashboard', () => ({
   }),
 }));
 
-jest.mock('tamagui', () => {
-  const React = require('react');
-  const { TextInput, Text, View, TouchableOpacity, ActivityIndicator, ScrollView: RNScrollView } = require('react-native');
-
-  return {
-    YStack: ({ children, ...props }: any) => React.createElement(View, props, children),
-    XStack: ({ children, ...props }: any) => React.createElement(View, props, children),
-    Text: ({ children, ...props }: any) => React.createElement(Text, props, children),
-    Button: ({ children, onPress, ...props }: any) =>
-      React.createElement(TouchableOpacity, { onPress, ...props }, React.createElement(Text, null, children)),
-    Input: (props: any) => React.createElement(TextInput, props),
-    Spinner: () => React.createElement(ActivityIndicator, null),
-    H2: ({ children, ...props }: any) => React.createElement(Text, props, children),
-    H3: ({ children, ...props }: any) => React.createElement(Text, props, children),
-    Card: ({ children, ...props }: any) => React.createElement(View, props, children),
-    ScrollView: ({ children, ...props }: any) => React.createElement(RNScrollView, props, children),
-    useTheme: () => ({}),
-  };
-});
-
 describe('Integration Tests', () => {
   beforeEach(() => {
     mockLoginInstagram.mockReset();

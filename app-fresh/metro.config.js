@@ -1,13 +1,22 @@
 const { getDefaultConfig } = require('expo/metro-config');
+const { withNativewind } = require('nativewind/metro');
 
 const config = getDefaultConfig(__dirname);
 
-// Fix: Reanimated worklets need lazy imports — Expo eager-loads by default
-// Without this, workletsModuleProxy is undefined and app crashes on startup (#9445)
+// Reanimated worklets need lazy imports — keep this (#9445)
 config.transformer.getTransformOptions = async () => ({
-  transform: {
-    inlineRequires: true,
-  },
+  transform: { inlineRequires: true },
 });
 
-module.exports = config;
+// Wrap with NativeWind — per official docs, only 2 options exist in v5:
+const nwConfig = withNativewind(config, {
+  globalClassNamePolyfill: false,
+  typescriptEnvPath: 'nativewind-env.d.ts',
+});
+
+// SAFETY: re-assert getTransformOptions in case withNativewind overwrote it
+if (!nwConfig.transformer.getTransformOptions) {
+  nwConfig.transformer.getTransformOptions = config.transformer.getTransformOptions;
+}
+
+module.exports = nwConfig;

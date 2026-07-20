@@ -1,8 +1,9 @@
 import React, { useCallback, useEffect } from 'react';
 import { FlatList } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { YStack, XStack, Text } from 'tamagui';
 import { useRouter } from 'expo-router';
+import { View, Text } from '@/tw';
+import { cn } from '@/tw/cn';
 import { useThreads } from '@/hooks/useThreads';
 import type { DealThread } from '@/lib/types';
 import { ClayAnimatedCard } from '@/components/clay/ClayAnimatedCard';
@@ -10,16 +11,14 @@ import { ClaySpinner } from '@/components/clay/ClaySpinner';
 import { ClayAnimatedButton } from '@/components/clay/ClayAnimatedButton';
 import { useShakeAnimation } from '@/hooks/useClayAnimations';
 
-type StatusColor = '$blue10' | '$orange10' | '$green10' | '$purple10' | '$teal10' | '$gray10' | '$red10';
-
-const STATUS_COLORS: Record<string, StatusColor> = {
-  invited: '$blue10',
-  negotiating: '$orange10',
-  contracted: '$green10',
-  content_pending: '$purple10',
-  live: '$teal10',
-  completed: '$gray10',
-  declined: '$red10',
+const STATUS_BG: Record<string, string> = {
+  invited: 'bg-brand-teal',
+  negotiating: 'bg-brand-ochre',
+  contracted: 'bg-success',
+  content_pending: 'bg-brand-lavender', // D12: lavender everywhere
+  live: 'bg-success',
+  completed: 'bg-muted',
+  declined: 'bg-error',
 };
 
 function formatTimestamp(iso: string | undefined): string {
@@ -46,25 +45,18 @@ function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) 
   }, [shake]);
 
   return (
-    <YStack
-      flex={1}
-      justify="center"
-      items="center"
-      p="$4"
-      gap="$4"
-      background="$canvas"
-    >
+    <View className="flex-1 items-center justify-center gap-4 bg-canvas p-4">
       <Animated.View style={animatedStyle}>
-        <YStack items="center" gap="$4" maxW={320}>
-          <Text color="$error" text="center" fontSize="$body-sm">
+        <View className="max-w-[320px] items-center gap-4">
+          <Text className="text-center text-body-sm text-error">
             {error}
           </Text>
           <ClayAnimatedButton variant="secondary" onPress={onRetry}>
             Retry
           </ClayAnimatedButton>
-        </YStack>
+        </View>
       </Animated.View>
-    </YStack>
+    </View>
   );
 }
 
@@ -77,71 +69,54 @@ function ThreadRow({
   index: number;
   onPress: () => void;
 }) {
-  const statusColor = STATUS_COLORS[thread.status] ?? '$gray10';
+  const statusBg = STATUS_BG[thread.status] ?? 'bg-muted';
   const hasUnread = (thread.unread_count ?? 0) > 0;
 
   return (
-    <YStack mx="$4" my="$1.5">
+    <View className="mx-4 my-1.5">
       <ClayAnimatedCard onPress={onPress} delay={index * 80}>
-        <YStack gap="$2">
+        <View className="gap-2">
           {/* Top row: title + unread badge + timestamp */}
-          <XStack justify="space-between" items="center">
-            <XStack flex={1} items="center" gap="$2">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-1 flex-row items-center gap-2">
               <Text
-                fontSize="$title-sm"
-                fontWeight="600"
-                color="$ink"
+                className="flex-1 text-title-sm font-semibold text-ink"
                 numberOfLines={1}
-                flex={1}
               >
                 {thread.campaign_title}
               </Text>
               {hasUnread && (
-                <Text
-                  fontSize="$caption"
-                  color="$on-primary"
-                  background="$error"
-                  rounded="$pill"
-                  minW={22}
-                  text="center"
-                  px={6}
-                >
+                <Text className="min-w-[22px] rounded-pill bg-error px-1.5 text-center text-caption text-on-primary">
                   {thread.unread_count > 99 ? '99+' : thread.unread_count}
                 </Text>
               )}
-            </XStack>
-            <Text fontSize="$caption" color="$muted-soft" ml="$2">
+            </View>
+            <Text className="ml-2 text-caption text-muted-soft">
               {formatTimestamp(thread.last_message_at)}
             </Text>
-          </XStack>
+          </View>
 
           {/* Preview text */}
-          <Text fontSize="$body-sm" color="$muted" numberOfLines={2}>
+          <Text className="text-body-sm text-muted" numberOfLines={2}>
             {thread.lastMessagePreview || 'No messages yet'}
           </Text>
 
           {/* Bottom row: status chip + agent */}
-          <XStack justify="space-between" items="center" mt="$1">
-            <Text
-              fontSize="$caption-uppercase"
-              fontWeight="600"
-              color="$on-primary"
-              background={statusColor}
-              rounded="$sm"
-              px={8}
-              py={2}
-            >
-              {thread.status.replace(/_/g, ' ')}
-            </Text>
+          <View className="mt-1 flex-row items-center justify-between">
+            <View className={cn('rounded-pill px-3 py-1', statusBg)}>
+              <Text className="text-caption-uppercase font-semibold text-on-primary">
+                {thread.status.replace(/_/g, ' ')}
+              </Text>
+            </View>
             {thread.agent_assigned && (
-              <Text fontSize="$caption" color="$muted-soft">
+              <Text className="text-caption text-muted-soft">
                 {thread.agent_assigned}
               </Text>
             )}
-          </XStack>
-        </YStack>
+          </View>
+        </View>
       </ClayAnimatedCard>
-    </YStack>
+    </View>
   );
 }
 
@@ -171,14 +146,9 @@ export default function MessagesScreen() {
   // Loading state
   if (loading) {
     return (
-      <YStack
-        flex={1}
-        justify="center"
-        items="center"
-        background="$canvas"
-      >
+      <View className="flex-1 items-center justify-center bg-canvas">
         <ClaySpinner size={40} label="Loading threads..." />
-      </YStack>
+      </View>
     );
   }
 
@@ -190,24 +160,17 @@ export default function MessagesScreen() {
   // Empty state
   if (threads.length === 0) {
     return (
-      <YStack
-        flex={1}
-        justify="center"
-        items="center"
-        p="$4"
-        gap="$3"
-        background="$canvas"
-      >
-        <Text fontSize="$body-sm" color="$muted" text="center">
+      <View className="flex-1 items-center justify-center gap-3 bg-canvas p-4">
+        <Text className="text-center text-body-sm text-muted">
           No deal threads yet — your agent will start outreach soon
         </Text>
-      </YStack>
+      </View>
     );
   }
 
   // Threads list
   return (
-    <YStack flex={1} background="$canvas">
+    <View className="flex-1 bg-canvas">
       <FlatList
         data={threads}
         renderItem={renderItem}
@@ -215,6 +178,6 @@ export default function MessagesScreen() {
         contentContainerStyle={{ paddingVertical: 8 }}
         showsVerticalScrollIndicator={false}
       />
-    </YStack>
+    </View>
   );
 }

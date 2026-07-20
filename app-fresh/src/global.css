@@ -1,0 +1,97 @@
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css";
+@import "nativewind/theme";
+
+/* ── Clay design system — @theme tokens ── */
+@layer theme {
+  @theme {
+    /* Brand & accent colors */
+    --color-canvas: #fffaf0;
+    --color-primary: #0a0a0a;
+    --color-primary-active: #1f1f1f;
+    --color-primary-disabled: #e5e5e5;
+    --color-ink: #0a0a0a;
+    --color-body-strong: #1a1a1a;
+    --color-body: #3a3a3a;
+    --color-muted: #6a6a6a;
+    --color-muted-soft: #9a9a9a;
+    --color-hairline: #e5e5e5;
+    --color-surface-soft: #faf5e8;
+    --color-surface-card: #f5f0e0;
+    --color-surface-strong: #ebe6d6;
+    --color-surface-dark: #0a1a1a;
+    --color-surface-dark-elevated: #1a2a2a;
+    --color-on-primary: #ffffff;
+    --color-on-dark: #ffffff;
+    --color-brand-pink: #ff4d8b;
+    --color-brand-teal: #1a3a3a;
+    --color-brand-lavender: #b8a4ed;
+    --color-brand-peach: #ffb084;
+    --color-brand-ochre: #e8b94a;
+    --color-brand-mint: #a4d4c5;
+    --color-brand-coral: #ff6b5a;
+    --color-success: #22c55e;
+    --color-warning: #f59e0b;
+    --color-error: #ef4444;
+
+    /* Radius — OVERRIDE Tailwind defaults to Clay scale */
+    --radius-xs: 6px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --radius-pill: 9999px;
+
+    /* Fonts — expo-font loaded family names */
+    --font-sans: "Inter_400Regular";
+    --font-display: "Inter_500Medium";
+
+    /* Typography — Tailwind v4 triple-var pattern */
+    --text-display-xl: 72px;
+    --text-display-xl--line-height: 72px;
+    --text-display-xl--letter-spacing: -2.5px;
+    --text-display-lg: 56px;
+    --text-display-lg--line-height: 59px;
+    --text-display-lg--letter-spacing: -2px;
+    --text-display-md: 40px;
+    --text-display-md--line-height: 44px;
+    --text-display-md--letter-spacing: -1px;
+    --text-display-sm: 32px;
+    --text-display-sm--line-height: 37px;
+    --text-display-sm--letter-spacing: -0.5px;
+    --text-title-lg: 24px;
+    --text-title-lg--line-height: 31px;
+    --text-title-lg--letter-spacing: -0.3px;
+    --text-title-md: 18px;
+    --text-title-md--line-height: 25px;
+    --text-title-sm: 16px;
+    --text-title-sm--line-height: 22px;
+    --text-body-md: 16px;
+    --text-body-md--line-height: 25px;
+    --text-body-sm: 14px;
+    --text-body-sm--line-height: 22px;
+    --text-caption: 13px;
+    --text-caption--line-height: 18px;
+    --text-caption-uppercase: 12px;
+    --text-caption-uppercase--line-height: 17px;
+    --text-caption-uppercase--letter-spacing: 1.5px;
+    --text-button: 14px;
+    --text-button--line-height: 14px;
+    --text-nav-link: 14px;
+    --text-nav-link--line-height: 20px;
+  }
+}
+
+@media ios {
+  :root {
+    --font-sans: "Inter_400Regular", system-ui;
+    --font-display: "Inter_500Medium", system-ui;
+  }
+}
+@media android {
+  :root {
+    --font-sans: "Inter_400Regular", normal;
+    --font-display: "Inter_500Medium", normal;
+  }
+}

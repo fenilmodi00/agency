@@ -1,72 +1,57 @@
 import React, { useCallback } from 'react';
-import { Pressable } from 'react-native';
+import { Pressable, ActivityIndicator } from 'react-native';
 import Animated from 'react-native-reanimated';
-import { Text, YStack, Spinner, type ColorTokens } from 'tamagui';
+import { View, Text } from '@/tw';
+import { cn, clayButtonBase } from '@/tw/cn';
 import { usePressAnimation } from '@/hooks/useClayAnimations';
 
-type ClayButtonVariant = 'primary' | 'secondary' | 'on-color' | 'text-link';
+type Variant = 'primary' | 'secondary' | 'on-color' | 'text-link';
 
-interface ClayAnimatedButtonProps {
-  children: React.ReactNode;
-  onPress: () => void;
-  variant?: ClayButtonVariant;
-  disabled?: boolean;
-  loading?: boolean;
-  fullWidth?: boolean;
-  maxWidth?: number;
-  height?: number;
-}
-
-const VARIANT_STYLES: Record<ClayButtonVariant, { bg: ColorTokens | 'transparent'; color: ColorTokens; border?: ColorTokens }> = {
-  primary: { bg: '$primary', color: '$on-primary' },
-  secondary: { bg: '$canvas', color: '$ink', border: '$hairline' },
-  'on-color': { bg: '$on-primary', color: '$ink' },
-  'text-link': { bg: 'transparent', color: '$ink' },
+const VARIANT_BG: Record<Variant, string> = {
+  primary: 'bg-primary',
+  secondary: 'bg-canvas border border-hairline',
+  'on-color': 'bg-on-primary',
+  'text-link': 'bg-transparent',
+};
+const VARIANT_TEXT: Record<Variant, string> = {
+  primary: 'text-on-primary',
+  secondary: 'text-ink',
+  'on-color': 'text-ink',
+  'text-link': 'text-ink',
+};
+const VARIANT_SPINNER: Record<Variant, string> = {
+  primary: 'text-on-primary', secondary: 'text-ink',
+  'on-color': 'text-ink', 'text-link': 'text-ink',
 };
 
 export function ClayAnimatedButton({
   children, onPress, variant = 'primary', disabled = false,
   loading = false, fullWidth = false, maxWidth, height = 44,
-}: ClayAnimatedButtonProps) {
+}: {
+  children: React.ReactNode; onPress: () => void; variant?: Variant;
+  disabled?: boolean; loading?: boolean; fullWidth?: boolean; maxWidth?: number; height?: number;
+}) {
   const { onPressIn, onPressOut, animatedStyle } = usePressAnimation(0.96);
-  const styles = VARIANT_STYLES[variant];
-
   const handlePress = useCallback(() => {
     if (!disabled && !loading) onPress();
   }, [disabled, loading, onPress]);
 
   return (
     <Pressable
-      onPressIn={onPressIn}
-      onPressOut={onPressOut}
-      onPress={handlePress}
+      onPressIn={onPressIn} onPressOut={onPressOut} onPress={handlePress}
       disabled={disabled || loading}
-      style={{ width: fullWidth ? '100%' : maxWidth ? maxWidth : undefined, opacity: disabled ? 0.5 : 1 }}
+      style={{ width: fullWidth ? '100%' : maxWidth ?? undefined, opacity: disabled ? 0.5 : 1 }}
     >
       <Animated.View style={[animatedStyle]}>
-        <YStack
-          background={styles.bg}
-          borderWidth={styles.border ? 1 : 0}
-          borderColor={styles.border}
-          rounded="$md"
-          height={height}
-          justify="center"
-          items="center"
-          px="$5"
-          flexDirection="row"
-          gap="$2"
-        >
+        <View className={cn(clayButtonBase, VARIANT_BG[variant])} style={{ height }}>
           {loading ? (
-            <Spinner size="small" color={styles.color} />
+            <ActivityIndicator size="small" className={VARIANT_SPINNER[variant]} />
           ) : (
-            <Text color={styles.color} fontSize="$button" fontWeight="600" letterSpacing={0}>
-              {children}
-            </Text>
+            <Text className={cn('text-button font-semibold', VARIANT_TEXT[variant])}>{children}</Text>
           )}
-        </YStack>
+        </View>
       </Animated.View>
     </Pressable>
   );
 }
-
 export default ClayAnimatedButton;

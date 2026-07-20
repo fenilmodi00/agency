@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  View,
   TextInput as RNTextInput,
   Pressable,
 } from 'react-native';
@@ -11,19 +11,10 @@ import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withSpring,
-  withSequence,
   Easing,
 } from 'react-native-reanimated';
-import {
-  YStack,
-  XStack,
-  Text,
-  Button,
-  Spinner,
-  H1,
-  H2,
-} from 'tamagui';
+import { View, Text } from '@/tw';
+import { ClayAnimatedButton } from '@/components/clay/ClayAnimatedButton';
 import { useAuthFlow, AuthMode } from '@/hooks/useAuthFlow';
 import { useShakeAnimation } from '@/hooks/useClayAnimations';
 
@@ -70,7 +61,7 @@ function CapsuleToggle({ mode, onChange }: { mode: AuthMode; onChange: (m: AuthM
       {(['login', 'signup'] as AuthMode[]).map((m) => (
         <Pressable key={m} onPress={() => onChange(m)}
           style={{ flex: 1, height: 36, alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-          <Text color={mode === m ? 'white' : CLAY.bodyStrong} fontWeight="600" fontSize={14}>
+          <Text className="text-sm font-semibold" style={{ color: mode === m ? 'white' : CLAY.bodyStrong }}>
             {m === 'login' ? 'Log In' : 'Sign Up'}
           </Text>
         </Pressable>
@@ -96,7 +87,7 @@ function PasswordInput({ value, onChangeText }: { value: string; onChangeText: (
       />
       <Pressable onPress={() => setVisible(v => !v)}
         style={{ position: 'absolute', right: 8, top: 0, bottom: 0, width: 40, alignItems: 'center', justifyContent: 'center' }}>
-        <Text fontSize={16} color={CLAY.muted}>{visible ? 'HIDE' : 'SHOW'}</Text>
+        <Text className="text-base text-muted">{visible ? 'HIDE' : 'SHOW'}</Text>
       </Pressable>
     </View>
   );
@@ -235,46 +226,50 @@ export default function AuthScreen() {
           keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
         >
           <View style={{ width: '100%', maxWidth: 400, alignItems: 'center', gap: 32 }}>
-            <YStack items="center" gap="$sm" maxW={320}>
-              <H2 fontSize={28} fontWeight="500" color="$ink" letterSpacing={-0.5} text="center">
+            <View className="items-center gap-3 max-w-[320px]">
+              <Text className="text-title-lg font-semibold text-ink tracking-[-0.5px] text-center">
                 Verify your email
-              </H2>
-              <Text fontSize={15} color="$muted" text="center" lineHeight={22}>
-                Enter the 6-digit code we sent to{' '}
-                <Text fontWeight="600" color="$body-strong">{otpEmail || 'your email'}</Text>
               </Text>
-            </YStack>
+              <Text className="text-[15px] leading-[22px] text-muted text-center">
+                Enter the 6-digit code we sent to{' '}
+                <Text className="font-semibold text-body-strong">{otpEmail || 'your email'}</Text>
+              </Text>
+            </View>
 
             <Animated.View style={[{ width: '100%' }, shakeStyle]}>
               <OTPInput value={otpCode} onChange={setOtpCode} disabled={isLoading} />
             </Animated.View>
 
             {error && (
-              <Text color="$error" fontSize={14} text="center" maxW={320}>{error}</Text>
+              <Text className="text-error text-sm text-center max-w-[320px]">{error}</Text>
             )}
 
-            <Button
-              onPress={handleVerify} disabled={otpCode.length !== 6 || isLoading}
-              background="$primary" color="$on-primary" rounded="$md"
-              height={48} width="100%" maxW={320} fontWeight="600" fontSize={15}
-              pressStyle={{ opacity: 0.9 }} opacity={otpCode.length === 6 && !isLoading ? 1 : 0.5}
-            >
-              {isLoading ? <Spinner size="small" color="white" /> : 'Verify & Continue'}
-            </Button>
+            <View className="w-full max-w-[320px]">
+              <ClayAnimatedButton
+                variant="primary"
+                onPress={handleVerify}
+                disabled={otpCode.length !== 6 || isLoading}
+                loading={isLoading}
+                fullWidth
+                height={48}
+              >
+                Verify & Continue
+              </ClayAnimatedButton>
+            </View>
 
-            <YStack items="center" gap="$sm">
-              <Text fontSize={14} color="$muted">Didn't receive it?</Text>
+            <View className="items-center gap-3">
+              <Text className="text-sm text-muted">Didn't receive it?</Text>
               {resendTimer > 0 ? (
-                <Text fontSize={14} color="$muted-soft">Resend code in {resendTimer}s</Text>
+                <Text className="text-sm text-muted-soft">Resend code in {resendTimer}s</Text>
               ) : (
                 <Pressable onPress={handleResend}>
-                  <Text fontSize={14} color="$brand-teal" fontWeight="600">Resend code</Text>
+                  <Text className="text-sm text-brand-teal font-semibold">Resend code</Text>
                 </Pressable>
               )}
-            </YStack>
+            </View>
 
             <Pressable onPress={() => { setOtpCode(''); setMode(mode); }}>
-              <Text fontSize={14} color="$muted">← Go back</Text>
+              <Text className="text-sm text-muted">← Go back</Text>
             </Pressable>
           </View>
         </ScrollView>
@@ -293,17 +288,17 @@ export default function AuthScreen() {
         <View style={{ width: '100%', maxWidth: 400, alignItems: 'center', gap: 24 }}>
           {/* Brand */}
           <View style={{ alignItems: 'center', gap: 8 }}>
-            <H1 fontSize={36} fontWeight="500" color="$ink" letterSpacing={-1} text="center">
+            <Text className="text-display-sm font-medium text-ink tracking-[-0.5px] text-center">
               Creator Workspace
-            </H1>
+            </Text>
             <View style={{ height: 48, alignItems: 'center', justifyContent: 'center' }}>
               <Animated.View style={[{ position: 'absolute', alignItems: 'center' }, loginFadeStyle]}>
-                <Text fontSize={16} color="$muted" text="center" lineHeight={24}>
+                <Text className="text-base text-muted text-center leading-6">
                   Welcome back! Sign in to continue.
                 </Text>
               </Animated.View>
               <Animated.View style={[{ position: 'absolute', alignItems: 'center' }, signupFadeStyle]}>
-                <Text fontSize={16} color="$muted" text="center" lineHeight={24}>
+                <Text className="text-base text-muted text-center leading-6">
                   Create your account to get started.
                 </Text>
               </Animated.View>
@@ -336,57 +331,64 @@ export default function AuthScreen() {
 
             {/* Error */}
             {error && (
-              <Text color="$error" fontSize={14} text="center" maxW={320} lineHeight={20}>
+              <Text className="text-error text-sm text-center max-w-[320px] leading-5">
                 {error}
               </Text>
             )}
 
             {/* Submit */}
-            <Button
-              onPress={handleContinue} disabled={!canSubmit}
-              background="$primary" color="$on-primary" rounded="$md"
-              height={48} width="100%" fontWeight="600" fontSize={15}
-              pressStyle={{ opacity: 0.9 }} opacity={canSubmit ? 1 : 0.5}
+            <Pressable
+              onPress={handleContinue}
+              disabled={!canSubmit}
+              style={{ width: '100%', maxWidth: 320, opacity: canSubmit ? 1 : 0.5 }}
             >
-              {isLoading ? <Spinner size="small" color="white" /> : (
-                <View style={{ height: 20, alignItems: 'center', justifyContent: 'center' }}>
-                  <Animated.View style={[{ position: 'absolute' }, loginFadeStyle]}>
-                    <Text color="white" fontWeight="600" fontSize={15}>Continue with Email</Text>
-                  </Animated.View>
-                  <Animated.View style={[{ position: 'absolute' }, signupFadeStyle]}>
-                    <Text color="white" fontWeight="600" fontSize={15}>Create Account</Text>
-                  </Animated.View>
-                </View>
-              )}
-            </Button>
+              <View className="h-12 rounded-md bg-primary items-center justify-center">
+                {isLoading ? (
+                  <ActivityIndicator size="small" color="#ffffff" />
+                ) : (
+                  <View style={{ height: 20, alignItems: 'center', justifyContent: 'center' }}>
+                    <Animated.View style={[{ position: 'absolute' }, loginFadeStyle]}>
+                      <Text className="text-on-primary font-semibold text-[15px]">Continue with Email</Text>
+                    </Animated.View>
+                    <Animated.View style={[{ position: 'absolute' }, signupFadeStyle]}>
+                      <Text className="text-on-primary font-semibold text-[15px]">Create Account</Text>
+                    </Animated.View>
+                  </View>
+                )}
+              </View>
+            </Pressable>
           </View>
 
           {/* Divider */}
-          <XStack width="100%" maxW={320} items="center" gap="$md">
-            <YStack flex={1} height={1} background="$hairline" />
-            <Text fontSize={13} color="$muted-soft">or</Text>
-            <YStack flex={1} height={1} background="$hairline" />
-          </XStack>
+          <View className="w-full max-w-[320px] flex-row items-center gap-4">
+            <View className="flex-1 h-px bg-hairline" />
+            <Text className="text-caption text-muted-soft">or</Text>
+            <View className="flex-1 h-px bg-hairline" />
+          </View>
 
           {/* Google */}
-          <Button
-            onPress={loginWithGoogle} disabled={isLoading}
-            background="transparent" borderWidth={1} borderColor="$hairline"
-            rounded="$md" height={48} width="100%" maxW={320}
-            pressStyle={{ background: '$surface-card' }}
-          >
-            {isLoading ? <Spinner size="small" color="$muted" /> : 'Continue with Google'}
-          </Button>
+          <View className="w-full max-w-[320px]">
+            <ClayAnimatedButton
+              variant="secondary"
+              onPress={loginWithGoogle}
+              disabled={isLoading}
+              loading={isLoading}
+              fullWidth
+              height={48}
+            >
+              Continue with Google
+            </ClayAnimatedButton>
+          </View>
 
           {/* Helper */}
           <View style={{ height: 40, alignItems: 'center', justifyContent: 'center' }}>
             <Animated.View style={[{ position: 'absolute', alignItems: 'center', paddingHorizontal: 24 }, loginFadeStyle]}>
-              <Text fontSize={13} color="$muted-soft" text="center">
+              <Text className="text-caption text-muted-soft text-center">
                 We'll send you a verification code to sign in securely.
               </Text>
             </Animated.View>
             <Animated.View style={[{ position: 'absolute', alignItems: 'center', paddingHorizontal: 24 }, signupFadeStyle]}>
-              <Text fontSize={13} color="$muted-soft" text="center">
+              <Text className="text-caption text-muted-soft text-center">
                 By signing up, you agree to our Terms and Privacy Policy.
               </Text>
             </Animated.View>
