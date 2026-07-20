@@ -1,43 +1,44 @@
-# agents/ — STAR Framework Agent Definitions
+# agents/ — STAR Framework Agents
 
-The system uses a 24-agent STAR framework organized into 4 execution phases and a protocol registry.
+24 agents: 16 execution agents across 4 phases (4 each) + 8 protocol registry agents. All use `agents/_base.py` for Agent/Task stubs, tool decorator fallback, and prompt-section parsing.
 
-## PHASE STRUCTURE
+## PHASES (execution order in `crew.py::StarCrew`)
 
-### 1. Scout (Discovery & Filtering)
-Focused on identifying high-fit creators from the scraper database.
-- **Goal**: Find regional creators matching the brand brief.
-- **Key Tasks**: Querying DB, fit scoring, ranking.
+| Phase | Dir | Agents (run sequentially) | Goal |
+|-------|-----|---------------------------|------|
+| 1 Scout | `scout/` | audience_mapper → trend_spotter → influencer_discovery → fit_scorer | Find + rank regional creators from the scraper DB |
+| 2 Target | `target/` | competitor_tracker → campaign_planner → brief_generator → budget_optimizer | Tailored campaign ideas + budget per creator |
+| 3 Activate | `activate/` | outreach_manager → creator_content_auditor → contract_helper → content_amplifier | Vernacular DM outreach, negotiation, contracts |
+| 4 Report | `report/` | landing_optimizer → performance_analyzer → roi_calculator → report_generator | Campaign analytics and ROI |
 
-### 2. Target (Content Analysis & Strategy)
-Deep-dives into creator content to personalize the approach.
-- **Goal**: Develop tailored campaign ideas for each identified creator.
-- **Key Tasks**: Content summarization, post analysis, budget strategy.
+Each sub-agent runs as its own `Crew(agents=[agent], tasks=[task], process=sequential)`. Results pass between phases via `StarCrew._phase_results`.
 
-### 3. Activate (Personalized Outreach)
-Handles the actual communication.
-- **Goal**: Send personalized, vernacular DMs.
-- **Key Tasks**: Language detection, DM composition, quota management.
+## PROTOCOL REGISTRY (`protocol/`)
 
-### 4. Report (Campaign Analytics)
-Summarizes the results of the outreach.
-- **Goal**: Provide campaign health and success metrics.
-- **Key Tasks**: Conversion tracking, outcome summaries.
+8 agents managing system state and routing — called within phases, not pipeline stages:
+channel_registry, consent_registry, creator_registry, entity_registry, launch_registry, memory_management, narrative_registry, offer_claims_registry.
+Backed by `tools/registry_tools.py` → subprocess to `marketing-skills/scripts/registry-events.py`.
 
-### Protocol Registry
-8 specialized agents that manage system state, routing, and coordination between phases.
+## BACKWARD-COMPAT SHIMS (root of agents/)
 
-## BACKWARD COMPATIBILITY SHIMS
-The following files are maintained as thin shims for legacy support, delegating work to the STAR agents:
-- `discovery.py` → Scout
-- `proposal.py` → Target
-- `outreach.py` → Activate
+| Shim | Re-exports from |
+|------|-----------------|
+| `discovery.py` | `scout/influencer_discovery.py` |
+| `proposal.py` | `target/campaign_planner.py` |
+| `outreach.py` | `activate/outreach_manager.py` |
+| `negotiator.py` | `activate/outreach_manager.py` |
+| `contract.py` | `activate/contract_helper.py` |
 
-## OTHER AGENTS
-- `negotiator.py`: Rate Negotiator (runs via `check_replies.py`)
-- `contract.py`: Contract Drafter (runs via `check_replies.py`)
+Keep shims working — legacy tests (`test_discovery.py`, `test_proposal.py`, `test_outreach.py`, `test_negotiator.py`, `test_contract.py`, `test_shim_compat.py`) import them.
 
 ## CONVENTIONS
-- **Shared Utilities**: All STAR agents use `agents/_base.py` for Agent/Task stubs and prompt parsing.
-- **No direct DB/IG access**: All persistence and API calls go through `tools/`.
-- **Prompts**: Defined in `prompts/` with strict JSON schemas.
+
+- **Prompts live in `prompts/<agent>_prompt.txt`** with strict JSON output schemas; parsed via `_base.py`.
+- **No direct DB/IG access from agents** — everything goes through `tools/`.
+- **One factory per agent**: `get_<name>_agent()` + `get_<name>_task()` pattern.
+- **Negotiator/Contract are NOT in the main crew** — `check_replies.py` invokes outreach_manager (as negotiator) and contract_helper directly.
+
+## ANTI-PATTERNS
+
+- **No new agents outside the 4 phase dirs or protocol/** — wire new agents into `crew.py::_run_<phase>_phase`, not into the shims.
+- **No crewai hard dependency at import time** — keep the `_base.py` stub fallback intact so modules import without crewai.

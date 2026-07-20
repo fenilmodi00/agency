@@ -4,7 +4,9 @@ data/*.db
 data/ig_session.json
 __pycache__/
 .python-version
-.omo/evidence/
+.omo/
+.opencode/
+*opencode-rag.json
 .pytest_cache/
 
 # STAR registry state (runtime)
@@ -23,3 +25,4 @@ app/android/
 app/tsc_output.txt
 app/dist-test/
 app/.omo/
+app/.opencode/

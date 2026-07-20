@@ -1,27 +1,28 @@
 # tests/
 
-## OVERVIEW
-
-117 pytest tests covering all 5 agents, the IG client, database CRUD, and crew orchestration. Fully mocked, zero network or LLM calls.
+343 pytest tests across 43 files — fully mocked, zero real network/LLM/Instagram calls. One `test_<module>.py` per source module.
 
 ## WHERE TO LOOK
 
-| File | Tests | Key classes |
-|------|-------|-------------|
-| `test_database.py` | DB CRUD for all 5 tables + edge cases | `TestBrandBriefs`, `TestConversations`, `TestContracts`, `TestDmLog`, `TestConversationDetails`, `TestEdgeCases` |
-| `test_ig_client.py` | Login, send_dm, read_threads, locking, quota | `TestLogin`, `TestSendDm`, `TestLock`, `TestReadThreads`, `TestDmQuota` |
-| `test_discovery.py` | Fit score math, output shape, mocked scraper | `TestFitScore`, `TestEstimatedRate`, `TestEngagementRate`, `TestDiscoveryOutputShape`, `TestMockedScraper` |
-| `test_proposal.py` | Proposal JSON shape, mocked content tools | `TestProposalOutputShape`, `TestMockedContentTools` |
-| `test_outreach.py` | Dry-run safety, send mode, quota enforcement | `TestDryRun`, `TestSendMode`, `TestQuota`, `TestOutreachOutputShape` |
-| `test_negotiator.py` | Budget overrun logic, round limits, output shape | `TestBudgetOverrun`, `TestRoundLimit`, `TestNegotiatorOutputShape`, `TestMockedNegotiator` |
-| `test_contract.py` | ASCI disclosures, legal disclaimers, output shape | `TestContractContent`, `TestContractOutputShape`, `TestMockedContract` |
-| `test_crew.py` | Kickoff summary shape, token tracking, full pipeline | `TestKickoffSummary`, `TestTotalTokens`, `TestMockedCrew` |
+| Area | Files | What's covered |
+|------|-------|----------------|
+| Core infra | `test_database.py`, `test_ig_client.py`, `test_ig_client_extended.py` | DB CRUD (5 tables, `:memory:`), login/send/read/quota/lock |
+| Orchestration | `test_crew.py`, `test_star_crew.py`, `test_main_star.py`, `test_check_replies_star.py`, `test_config_star.py` | Kickoff summary shape, phase routing, `--phase` CLI, import resolution, STAR config vars |
+| STAR agents | `test_<agent>.py` x16 (audience_mapper…report_generator) + `test_memory_management.py` | Agent factories, task wiring, output shapes |
+| Protocol registry | `test_<name>_registry.py` x7 | Registry agents |
+| Legacy shims | `test_discovery/proposal/outreach/negotiator/contract.py`, `test_shim_compat.py` | Shim exports keep working |
+| Connectors | `test_connector_tools.py`, `test_registry_tools.py` | All 17 connector wrappers via mocked `subprocess.run` |
+| API backend | `test_api_infrastructure.py`, `test_api_endpoints.py` | Clerk JWT auth, SessionManager LRU, Appwrite client, all 5 authed routes via FastAPI `TestClient` |
 
 ## CONVENTIONS
 
-- **pytest-mock everywhere.** `mocker.patch("tools.scraper_tools.get_creator_content_summary")` style. Never import real IG, LLM, or scraper modules.
-- **`:memory:` SQLite.** `test_database.py` uses a `db` fixture returning `Database(":memory:")`. No file-based DB in tests.
-- **`set_database(db)` before DB tool tests.** `tools/database_tools.py` uses a module-level `_db`. Any test exercising DB tools must call `set_database(db)` first or tools hit a stale default.
-- **Output shape tests.** Each agent test file has a `Test*OutputShape` class validating required JSON keys, types, and serializability. Add one when adding an agent.
-- **Mocked tool tests.** Each agent test file has a `TestMocked*` class patching the agent's tools and asserting return values. Proves tool wiring without running the crew.
-- **`test_agents.py` in root.** Runner script that imports and executes all test modules. Not a test file itself.
+- **pytest-mock everywhere** — `mocker.patch(...)`. Never import real IG, LLM, or scraper modules.
+- **No conftest.py** — fixtures are defined per-file. No pytest config file either; pytest runs on defaults.
+- **`:memory:` SQLite** — `Database(":memory:")` fixture; no file DBs in tests.
+- **`set_database(db)` before DB tool tests** — `tools/database_tools.py` holds a module-level `_db`.
+- **Output shape tests** — every agent file has a `Test*OutputShape` class validating JSON keys/types/serializability. Add one per new agent.
+- **Mocked tool tests** — `TestMocked*` classes patch agent tools and assert wiring without running the crew.
+- **Crew mocking** — patch `crew.Crew` with `side_effect` lambdas returning `MockCrewOutput`-shaped results.
+- **API tests** — `monkeypatch` for env vars, `TestClient` for HTTP, `MagicMock` for Instagram/Appwrite/SessionManager; JWT verification patched at `api.auth.jwt.decode`.
+- **Connector tests** — patch `subprocess.run`, assert on args + JSON parsing.
+- **Runner**: `python test_agents.py` = `pytest.main(["tests/", "-v", "--tb=short", "--no-header"])`.

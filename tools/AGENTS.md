@@ -1,31 +1,29 @@
 # tools/ — CrewAI Tool Functions
 
-## OVERVIEW
-
-A comprehensive toolset for the STAR framework, featuring 17 specialized connector modules for external data/APIs and registry tools for system state management. All tools use the `_Tool` callable wrapper pattern.
+Toolset for the STAR framework: creator DB access, Instagram DM ops, state CRUD, pure calculations, protocol-registry access, and 17 subprocess wrappers around the vendored `marketing-skills/` connector scripts.
 
 ## WHERE TO LOOK
 
 | File | Tools | Wraps |
 |------|-------|-------|
-| `connectors/` | 17 specialized modules | Scraper DB, Instagram API, Database CRUD, Calculations, LLM utilities |
-| `registry_tools.py` | Registry access tools | Protocol registry for STAR framework state and routing |
-| `scraper_tools.py` | `query_creators`, `get_creator_details`, etc. | External scraper DB (`SCRAPER_DB_PATH`) or REST API (`SCRAPER_API_URL`) |
-| `calculation_tools.py` | `calculate_fit_score`, `estimated_rate`, etc. | Pure math, no I/O |
-| `instagram_tools.py` | `send_instagram_dm`, `read_instagram_threads`, etc. | `ig_client.get_ig_client()` singleton |
-| `database_tools.py` | `save_conversation`, `log_dm`, `save_contract`, etc. | `database.Database` via `set_database()` injection |
-| `llm_tools.py` | `call_fireworks_llm`, `generate_gujarati_text` | `llm_client.call_fireworks_chat()` |
-| `__init__.py` | (empty) | Package marker |
+| `scraper_tools.py` | `query_creators`, `get_creator_details` | External scraper via `SCRAPER_DB_PATH` (SQLite) or `SCRAPER_API_URL` (REST) |
+| `instagram_tools.py` | `send_instagram_dm`, `read_thread_messages` | `ig_client.get_ig_client()` singleton |
+| `database_tools.py` | `save_conversation`, `log_dm`, `check_dm_quota`, `update_conversation_status` | `database.Database` via `set_database()` injection |
+| `calculation_tools.py` | `calculate_fit_score`, `estimated_rate`, `calculate_engagement_rate` | Pure math, no I/O |
+| `registry_tools.py` | Protocol registry read/write | subprocess → `marketing-skills/scripts/registry-events.py` |
+| `connectors/*_tools.py` | 17 modules: appstore, bluesky, discourse, doh, experiment, fediverse, firecrawl, gdelt, hn, kg, ledger, pageviews, psi, rss, tavily, wayback, youtube | subprocess → `marketing-skills/scripts/connectors/*.py` |
 
 ## CONVENTIONS
 
-- **`@tool` import pattern**: `try: from crewai.tools import tool` / `except ImportError:` defines a local `_Tool` class (from `scraper_tools.py`) or a pass-through decorator. Both produce callables with `.name`, `.description`, `.run()`.
-- **`set_database(db)`**: Must be called before any `database_tools` function. Auto-initializes `:memory:` if skipped. Tests must call it explicitly.
-- **Scraper dual-backend**: `scraper_tools` checks `SCRAPER_DB_PATH` first, falls back to `SCRAPER_API_URL`. Returns empty list/dict if neither is set.
+- **`_Tool` callable wrapper**: canonical `_Tool` class in `scraper_tools.py` (`__call__` + `.run()` + `.name` + `.description`). `database_tools.py`/`instagram_tools.py` use `try: from crewai.tools import tool` with an identical `_Tool` fallback. crewai's real decorator returns non-callable objects — never use it bare.
+- **Connector bridge**: each `connectors/*_tools.py` resolves its script path and runs `subprocess.run(["python", script] + args, timeout=CONNECTOR_TIMEOUT_SECONDS)`, parsing JSON stdout. Default timeout 30s (`config.py`).
+- **Scraper dual-backend**: DB path first, REST API fallback; empty result when neither is set.
+- **`set_database(db)`** must be called before any `database_tools` function. Auto-initializes `:memory:` if skipped. Tests must call it explicitly.
 
 ## ANTI-PATTERNS
 
-- **No raw SQL from agent output.** All `database_tools` functions delegate to parameterized queries in `database.py`. Never construct SQL from agent-generated strings.
-- **No additional instagrapi Client instances.** Always use `get_ig_client()` from `ig_client.py`. Creating a second `Client()` breaks the serial lock and rate limiter.
-- **No real LLM calls inside tools.** `llm_tools.py` wraps `llm_client`, which handles the Fireworks API. Don't import `openai` or `requests` directly in tool functions to call LLMs.
-- **No network I/O in `calculation_tools.py`.** Pure functions only. Fit scoring must be deterministic and testable without mocks.
+- **No raw SQL from agent output** — all `database_tools` delegate to parameterized queries in `database.py`.
+- **No additional instagrapi Client instances** — always `get_ig_client()`; a second `Client()` breaks the serial lock and rate limiter.
+- **No real LLM calls inside tools** — LLM access goes through `llm_client.py` only; don't import `openai` here.
+- **No network I/O in `calculation_tools.py`** — pure, deterministic, mock-free testable.
+- **No importing `marketing-skills/` scripts directly** — subprocess only; keeps the vendored library decoupled.
