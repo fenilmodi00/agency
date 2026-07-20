@@ -40,6 +40,13 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class CreateSessionResponse(BaseModel):
+    """Response body for POST /auth/appwrite-session."""
+
+    userId: str
+    secret: str
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup/shutdown context for the FastAPI app."""
@@ -106,6 +113,20 @@ def require_clerk_user_id(authorization: str | None = Header(None)) -> str:
 async def health():
     """Health check endpoint."""
     return {"status": "ok"}
+
+
+@app.post("/auth/appwrite-session")
+async def create_appwrite_session(clerk_user_id: str = Depends(require_clerk_user_id)):
+    """Create an Appwrite session for the authenticated user."""
+    try:
+        result = get_appwrite_client().create_user_session(clerk_user_id)
+        return CreateSessionResponse(userId=result["userId"], secret=result["secret"])
+    except RuntimeError as exc:
+        logger.error("Failed to create Appwrite session for {}: {}", clerk_user_id, exc)
+        raise HTTPException(
+            status_code=502,
+            detail={"error": "appwrite_session_failed", "message": str(exc)},
+        ) from exc
 
 
 # ── Helpers ─────────────────────────────────────────────────────────────────

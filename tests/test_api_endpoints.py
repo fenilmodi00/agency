@@ -278,3 +278,40 @@ def test_disconnect_auth_fail(client):
     """Missing JWT on disconnect → 401."""
     response = client.post("/disconnect")
     assert response.status_code == 401
+
+
+# ── POST /auth/appwrite-session ───────────────────────────────────────────────
+
+
+def test_appwrite_session_happy(client, mock_appwrite_client):
+    """Successful session creation returns 200 with userId and secret."""
+    mock_appwrite_client.create_user_session.return_value = {
+        "userId": "test-uid",
+        "secret": "test-secret",
+    }
+
+    token = make_jwt("user_123")
+    response = client.post(
+        "/auth/appwrite-session",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"userId": "test-uid", "secret": "test-secret"}
+    mock_appwrite_client.create_user_session.assert_called_once_with("user_123")
+
+
+def test_appwrite_session_failure(client, mock_appwrite_client):
+    """RuntimeError from Appwrite → 502 appwrite_session_failed."""
+    mock_appwrite_client.create_user_session.side_effect = RuntimeError("Appwrite failed")
+
+    token = make_jwt("user_123")
+    response = client.post(
+        "/auth/appwrite-session",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 502
+    body = response.json()
+    assert body["error"] == "appwrite_session_failed"
+    assert "Appwrite failed" in body["message"]

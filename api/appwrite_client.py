@@ -15,6 +15,7 @@ from appwrite.permission import Permission
 from appwrite.role import Role
 from appwrite.query import Query
 from appwrite.services.databases import Databases
+from appwrite.services.users import Users
 from loguru import logger
 
 # ── Env vars ──────────────────────────────────────────────────────────────────
@@ -39,6 +40,7 @@ class AppwriteClient:
         self._client.set_project(APPWRITE_PROJECT_ID)
         self._client.set_key(APPWRITE_API_KEY)
         self._databases = Databases(self._client)
+        self._users = Users(self._client)
 
     @staticmethod
     def _user_permissions(appwrite_uid: str) -> list[str]:
@@ -145,6 +147,42 @@ class AppwriteClient:
         except Exception:
             logger.exception("Unexpected error clearing session for {}", clerk_user_id)
             return False
+
+    def create_user_session(self, clerk_user_id: str) -> dict:
+        """Create an Appwrite session token for a Clerk user.
+
+        Looks up the Appwrite user whose ID matches the Clerk user ID,
+        creating the user if they do not exist yet, then creates a token
+        the client can exchange for a session via PUT /account/sessions/token.
+
+        Args:
+            clerk_user_id: Clerk user ID (used as the Appwrite user ID).
+
+        Returns:
+            {"userId": <appwrite_uid>, "secret": <session_secret>}
+
+        Raises:
+            RuntimeError: If any Appwrite or unexpected error occurs.
+        """
+        try:
+            result = self._users.list(queries=[Query.equal("$id", clerk_user_id)])
+            users = result.users
+
+            if users:
+                appwrite_uid = users[0].id
+            else:
+                new_user = self._users.create(user_id=clerk_user_id, name=clerk_user_id)
+                appwrite_uid = new_user.id
+                logger.info("Created Appwrite user {} for Clerk user {}", appwrite_uid, clerk_user_id)
+
+            token = self._users.create_token(user_id=appwrite_uid)
+            return {"userId": appwrite_uid, "secret": token.secret}
+        except AppwriteException as exc:
+            logger.exception("Appwrite error creating user session for {}", clerk_user_id)
+            raise RuntimeError(f"Appwrite error: {exc}") from exc
+        except Exception as exc:
+            logger.exception("Unexpected error creating user session for {}", clerk_user_id)
+            raise RuntimeError(f"Unexpected error: {exc}") from exc
 
 
 # ── Singleton ─────────────────────────────────────────────────────────────────
