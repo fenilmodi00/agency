@@ -1,5 +1,3 @@
-import { account } from './appwrite';
-
 /**
  * Instagram FastAPI helper functions.
  *
@@ -10,7 +8,7 @@ import { account } from './appwrite';
  * - fetchInsights(): GETs insights from FastAPI /insights
  * - disconnectInstagram(): POSTs disconnect to FastAPI /disconnect
  *
- * All endpoints use JWT auth via getAuthHeaders() (x-appwrite-user-jwt header).
+ * All endpoints use JWT auth via getAuthHeaders() (Authorization: Bearer header).
  */
 
 const API_BASE_URL = process.env.EXPO_PUBLIC_IG_API_BASE_URL;
@@ -24,12 +22,11 @@ if (!API_BASE_URL) {
 const FETCH_TIMEOUT_MS = 15_000;
 
 /**
- * Returns auth headers with Appwrite JWT for FastAPI endpoint calls.
+ * Returns auth headers with Clerk JWT Bearer token for FastAPI endpoint calls.
  */
-async function getAuthHeaders(): Promise<HeadersInit> {
-  const jwt = await account.createJWT();
+function getAuthHeaders(clerkToken: string): HeadersInit {
   return {
-    'x-appwrite-user-jwt': jwt.jwt,
+    Authorization: `Bearer ${clerkToken}`,
     'Content-Type': 'application/json',
   };
 }
@@ -106,11 +103,12 @@ export interface InstagramInsightsResponse {
  * @throws Error("Instagram login failed") on 502 or other non-200
  */
 export async function loginInstagram(
+  clerkToken: string,
   clerkId: string,
   username: string,
   password: string
 ): Promise<InstagramProfileResponse> {
-  const headers = await getAuthHeaders();
+  const headers = getAuthHeaders(clerkToken);
   const response = await fetchWithTimeout(`${API_BASE_URL}/login`, {
     method: 'POST',
     headers,
@@ -137,8 +135,8 @@ export async function loginInstagram(
  *
  * @throws Error("session_expired") on 401
  */
-export async function fetchProfile(): Promise<InstagramProfileResponse> {
-  const headers = await getAuthHeaders();
+export async function fetchProfile(clerkToken: string): Promise<InstagramProfileResponse> {
+  const headers = getAuthHeaders(clerkToken);
   const response = await fetchWithTimeout(`${API_BASE_URL}/profile`, {
     method: 'GET',
     headers,
@@ -160,8 +158,8 @@ export async function fetchProfile(): Promise<InstagramProfileResponse> {
  *
  * @throws Error("session_expired") on 401
  */
-export async function fetchMedia(): Promise<InstagramMediaResponse[]> {
-  const headers = await getAuthHeaders();
+export async function fetchMedia(clerkToken: string): Promise<InstagramMediaResponse[]> {
+  const headers = getAuthHeaders(clerkToken);
   const response = await fetchWithTimeout(`${API_BASE_URL}/media?amount=25`, {
     method: 'GET',
     headers,
@@ -185,8 +183,8 @@ export async function fetchMedia(): Promise<InstagramMediaResponse[]> {
  * @throws Error("session_expired") on 401
  * @throws Error on other non-200 responses
  */
-export async function fetchInsights(): Promise<InstagramInsightsResponse> {
-  const headers = await getAuthHeaders();
+export async function fetchInsights(clerkToken: string): Promise<InstagramInsightsResponse> {
+  const headers = getAuthHeaders(clerkToken);
   const response = await fetchWithTimeout(`${API_BASE_URL}/insights`, {
     method: 'GET',
     headers,
@@ -205,8 +203,8 @@ export async function fetchInsights(): Promise<InstagramInsightsResponse> {
 /**
  * Disconnects Instagram session via the FastAPI backend.
  */
-export async function disconnectInstagram(): Promise<void> {
-  const headers = await getAuthHeaders();
+export async function disconnectInstagram(clerkToken: string): Promise<void> {
+  const headers = getAuthHeaders(clerkToken);
   const response = await fetchWithTimeout(`${API_BASE_URL}/disconnect`, {
     method: 'POST',
     headers,

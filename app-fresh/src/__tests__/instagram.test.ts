@@ -9,17 +9,6 @@
 const mockFetch = jest.fn();
 global.fetch = mockFetch;
 
-// Override the global jest.setup.ts mock for @/lib/appwrite to include createJWT
-jest.mock('@/lib/appwrite', () => ({
-  account: {
-    createJWT: jest.fn().mockResolvedValue({ jwt: 'mock-jwt' }),
-  },
-  tablesDB: {},
-  realtime: {},
-  storage: {},
-  client: {},
-}));
-
 import {
   loginInstagram,
   fetchProfile,
@@ -27,14 +16,11 @@ import {
   fetchInsights,
   disconnectInstagram,
 } from '@/lib/instagram';
-import { account } from '@/lib/appwrite';
 
-const mockCreateJWT = account.createJWT as jest.Mock;
+const TEST_TOKEN = 'test-clerk-jwt';
 
 beforeEach(() => {
   mockFetch.mockReset();
-  mockCreateJWT.mockReset();
-  mockCreateJWT.mockResolvedValue({ jwt: 'mock-jwt' });
 });
 
 const mockProfile = {
@@ -103,14 +89,14 @@ describe('loginInstagram', () => {
       json: async () => mockProfile,
     } as Response);
 
-    const result = await loginInstagram(clerkId, username, password);
+    const result = await loginInstagram(TEST_TOKEN, clerkId, username, password);
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain('/login');
     expect(options.method).toBe('POST');
     expect(options.headers).toBeDefined();
-    expect(options.headers['x-appwrite-user-jwt']).toBe('mock-jwt');
+    expect(options.headers['Authorization']).toBe(`Bearer ${TEST_TOKEN}`);
     expect(options.headers['Content-Type']).toBe('application/json');
 
     const body = JSON.parse(options.body);
@@ -130,7 +116,7 @@ describe('loginInstagram', () => {
       json: async () => ({}),
     } as Response);
 
-    await expect(loginInstagram(clerkId, username, password)).rejects.toThrow(
+    await expect(loginInstagram(TEST_TOKEN, clerkId, username, password)).rejects.toThrow(
       'Invalid credentials'
     );
   });
@@ -142,7 +128,7 @@ describe('loginInstagram', () => {
       json: async () => ({}),
     } as Response);
 
-    await expect(loginInstagram(clerkId, username, password)).rejects.toThrow(
+    await expect(loginInstagram(TEST_TOKEN, clerkId, username, password)).rejects.toThrow(
       'Instagram login failed'
     );
   });
@@ -155,7 +141,7 @@ describe('loginInstagram', () => {
       json: async () => ({}),
     } as Response);
 
-    await expect(loginInstagram(clerkId, username, password)).rejects.toThrow(
+    await expect(loginInstagram(TEST_TOKEN, clerkId, username, password)).rejects.toThrow(
       'Instagram login failed'
     );
   });
@@ -169,7 +155,7 @@ describe('loginInstagram', () => {
       },
     } as unknown as Response);
 
-    await expect(loginInstagram(clerkId, username, password)).rejects.toThrow();
+    await expect(loginInstagram(TEST_TOKEN, clerkId, username, password)).rejects.toThrow();
   });
 });
 
@@ -181,13 +167,13 @@ describe('fetchProfile', () => {
       json: async () => mockProfile,
     } as Response);
 
-    const result = await fetchProfile();
+    const result = await fetchProfile(TEST_TOKEN);
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain('/profile');
     expect(options.method).toBe('GET');
-    expect(options.headers['x-appwrite-user-jwt']).toBe('mock-jwt');
+    expect(options.headers['Authorization']).toBe(`Bearer ${TEST_TOKEN}`);
 
     expect(result).toEqual(mockProfile);
   });
@@ -199,13 +185,13 @@ describe('fetchProfile', () => {
       json: async () => ({}),
     } as Response);
 
-    await expect(fetchProfile()).rejects.toThrow('session_expired');
+    await expect(fetchProfile(TEST_TOKEN)).rejects.toThrow('session_expired');
   });
 
   it('malformed_input: handles fetch throwing a network error', async () => {
     mockFetch.mockRejectedValueOnce(new Error('Network error'));
 
-    await expect(fetchProfile()).rejects.toThrow();
+    await expect(fetchProfile(TEST_TOKEN)).rejects.toThrow();
   });
 });
 
@@ -217,14 +203,14 @@ describe('fetchMedia', () => {
       json: async () => ({ data: mockMedia }),
     } as Response);
 
-    const result = await fetchMedia();
+    const result = await fetchMedia(TEST_TOKEN);
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain('/media');
     expect(url).toContain('amount=25');
     expect(options.method).toBe('GET');
-    expect(options.headers['x-appwrite-user-jwt']).toBe('mock-jwt');
+    expect(options.headers['Authorization']).toBe(`Bearer ${TEST_TOKEN}`);
 
     expect(result).toEqual(mockMedia);
     expect(Array.isArray(result)).toBe(true);
@@ -238,7 +224,7 @@ describe('fetchMedia', () => {
       json: async () => ({}),
     } as Response);
 
-    await expect(fetchMedia()).rejects.toThrow('session_expired');
+    await expect(fetchMedia(TEST_TOKEN)).rejects.toThrow('session_expired');
   });
 
   it('non-ok: throws on 500', async () => {
@@ -249,7 +235,7 @@ describe('fetchMedia', () => {
       json: async () => ({}),
     } as Response);
 
-    await expect(fetchMedia()).rejects.toThrow();
+    await expect(fetchMedia(TEST_TOKEN)).rejects.toThrow();
   });
 
   it('malformed_input: handles empty data array', async () => {
@@ -259,7 +245,7 @@ describe('fetchMedia', () => {
       json: async () => ({ data: [] }),
     } as Response);
 
-    const result = await fetchMedia();
+    const result = await fetchMedia(TEST_TOKEN);
     expect(result).toEqual([]);
   });
 });
@@ -272,13 +258,13 @@ describe('fetchInsights', () => {
       json: async () => mockInsights,
     } as Response);
 
-    const result = await fetchInsights();
+    const result = await fetchInsights(TEST_TOKEN);
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain('/insights');
     expect(options.method).toBe('GET');
-    expect(options.headers['x-appwrite-user-jwt']).toBe('mock-jwt');
+    expect(options.headers['Authorization']).toBe(`Bearer ${TEST_TOKEN}`);
 
     expect(result).toEqual(mockInsights);
   });
@@ -291,7 +277,7 @@ describe('fetchInsights', () => {
       json: async () => businessError,
     } as Response);
 
-    const result = await fetchInsights();
+    const result = await fetchInsights(TEST_TOKEN);
 
     expect(result).toEqual(businessError);
   });
@@ -303,7 +289,7 @@ describe('fetchInsights', () => {
       json: async () => ({}),
     } as Response);
 
-    await expect(fetchInsights()).rejects.toThrow('session_expired');
+    await expect(fetchInsights(TEST_TOKEN)).rejects.toThrow('session_expired');
   });
 
   it('non-ok: throws on 500', async () => {
@@ -314,7 +300,7 @@ describe('fetchInsights', () => {
       json: async () => ({}),
     } as Response);
 
-    await expect(fetchInsights()).rejects.toThrow();
+    await expect(fetchInsights(TEST_TOKEN)).rejects.toThrow();
   });
 });
 
@@ -326,13 +312,13 @@ describe('disconnectInstagram', () => {
       json: async () => ({}),
     } as Response);
 
-    await disconnectInstagram();
+    await disconnectInstagram(TEST_TOKEN);
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
     const [url, options] = mockFetch.mock.calls[0];
     expect(url).toContain('/disconnect');
     expect(options.method).toBe('POST');
-    expect(options.headers['x-appwrite-user-jwt']).toBe('mock-jwt');
+    expect(options.headers['Authorization']).toBe(`Bearer ${TEST_TOKEN}`);
   });
 
   it('malformed_input: throws on non-ok disconnect response', async () => {
@@ -343,24 +329,8 @@ describe('disconnectInstagram', () => {
       json: async () => ({}),
     } as Response);
 
-    await expect(disconnectInstagram()).rejects.toThrow();
+    await expect(disconnectInstagram(TEST_TOKEN)).rejects.toThrow();
   });
 });
 
-describe('getAuthHeaders', () => {
-  it('calls account.createJWT and returns correct headers', async () => {
-    mockCreateJWT.mockResolvedValueOnce({ jwt: 'custom-jwt-value' });
-
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      json: async () => mockProfile,
-    } as Response);
-
-    await fetchProfile();
-
-    const [_url, options] = mockFetch.mock.calls[0];
-    expect(options.headers['x-appwrite-user-jwt']).toBe('custom-jwt-value');
-    expect(options.headers['Content-Type']).toBe('application/json');
-  });
-});
+// getAuthHeaders is now a private synchronous function — tested implicitly via all above calls
