@@ -25,6 +25,7 @@ export function useMessages(threadId: string): UseMessagesResult {
       return;
     }
 
+    setMessages([]);
     setLoading(true);
     setError(null);
 
@@ -121,7 +122,9 @@ export function useMessages(threadId: string): UseMessagesResult {
   useRealtimeSubscription(messagesChannel.toString(), (event) => {
     const newMessage = event.payload as unknown as Message;
     if (newMessage.thread_id === threadId) {
-      setMessages((prev) => [...prev, newMessage]);
+      setMessages((prev) =>
+        prev.some((m) => m.$id === newMessage.$id) ? prev : [...prev, newMessage]
+      );
     }
   });
 
