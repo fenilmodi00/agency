@@ -63,33 +63,35 @@ export function useThreads(): UseThreadsResult {
 
       const rawThreads = threadsResult.rows as unknown as DealThread[];
 
-      // Step 3: Fetch last message preview for each thread
-      const threadsWithPreviews = await Promise.all(
-        rawThreads.map(async (thread) => {
-          try {
-            const messagesResult = await tablesDB.listRows({
-              databaseId: DATABASE_ID,
-              tableId: TABLES.MESSAGES,
-              queries: [
-                Query.equal('thread_id', thread.$id ?? ''),
-                Query.orderDesc('timestamp'),
-                Query.limit(1),
-              ],
-            });
+      // Step 3: Batch-fetch last message preview for all threads (single query)
+      const threadIds = rawThreads.map((t) => t.$id ?? '').filter(Boolean);
+      let lastMessageByThread = new Map<string, string>();
 
-            const lastMsg = messagesResult.rows[0] as unknown as Message | undefined;
-            return {
-              ...thread,
-              lastMessagePreview: lastMsg?.body ?? '',
-            };
-          } catch {
-            return {
-              ...thread,
-              lastMessagePreview: '',
-            };
+      if (threadIds.length > 0) {
+        const messagesResult = await tablesDB.listRows({
+          databaseId: DATABASE_ID,
+          tableId: TABLES.MESSAGES,
+          queries: [
+            Query.equal('thread_id', threadIds),
+            Query.orderDesc('timestamp'),
+          ],
+        });
+
+        const allMessages = messagesResult.rows as unknown as Message[];
+        // Dedupe: keep only the first (latest) message per thread_id
+        const seen = new Set<string>();
+        for (const msg of allMessages) {
+          if (!seen.has(msg.thread_id)) {
+            seen.add(msg.thread_id);
+            lastMessageByThread.set(msg.thread_id, msg.body);
           }
-        })
-      );
+        }
+      }
+
+      const threadsWithPreviews = rawThreads.map((thread) => ({
+        ...thread,
+        lastMessagePreview: lastMessageByThread.get(thread.$id ?? '') ?? '',
+      }));
 
       setThreads(threadsWithPreviews);
     } catch (err: unknown) {
