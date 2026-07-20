@@ -13,14 +13,15 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
-import { View, Text } from '@/tw';
+import { View, Text, TextInput } from '@/tw';
+import { cn, clayInput } from '@/tw/cn';
 import { ClayAnimatedButton } from '@/components/clay/ClayAnimatedButton';
 import { useAuthFlow, AuthMode } from '@/hooks/useAuthFlow';
 import { useShakeAnimation } from '@/hooks/useClayAnimations';
 
 const TOGGLE_WIDTH = 280;
 const PILL_WIDTH = TOGGLE_WIDTH / 2 - 4;
-const INPUT_HEIGHT = 48;
+const INPUT_HEIGHT = 44;
 const CLAY = {
   canvas: '#fffaf0',
   primary: '#0a0a0a',
@@ -75,15 +76,11 @@ function PasswordInput({ value, onChangeText }: { value: string; onChangeText: (
   const [visible, setVisible] = useState(false);
   return (
     <View style={{ position: 'relative', width: '100%', height: INPUT_HEIGHT }}>
-      <RNTextInput
+      <TextInput
         placeholder="Password (min 8 characters)" value={value} onChangeText={onChangeText}
         secureTextEntry={!visible} autoCapitalize="none" autoComplete="new-password"
         textContentType="newPassword" placeholderTextColor={CLAY.mutedSoft}
-        style={{
-          width: '100%', height: INPUT_HEIGHT, backgroundColor: CLAY.canvas,
-          borderWidth: 1, borderColor: CLAY.hairline, borderRadius: 12,
-          paddingHorizontal: 16, paddingRight: 48, fontSize: 16, color: CLAY.ink,
-        }}
+        className={cn(clayInput, 'w-full pr-12')}
       />
       <Pressable onPress={() => setVisible(v => !v)}
         style={{ position: 'absolute', right: 8, top: 0, bottom: 0, width: 40, alignItems: 'center', justifyContent: 'center' }}>
@@ -251,7 +248,6 @@ export default function AuthScreen() {
                 disabled={otpCode.length !== 6 || isLoading}
                 loading={isLoading}
                 fullWidth
-                height={48}
               >
                 Verify & Continue
               </ClayAnimatedButton>
@@ -312,15 +308,11 @@ export default function AuthScreen() {
           <View style={{ width: '100%', maxWidth: 320, gap: 12, alignItems: 'center' }}>
             {/* Email */}
             <View style={{ width: '100%' }}>
-              <RNTextInput
+              <TextInput
                 placeholder="Email address" value={email} onChangeText={setEmail}
                 autoCapitalize="none" keyboardType="email-address" autoComplete="email"
                 textContentType="emailAddress" placeholderTextColor={CLAY.mutedSoft}
-                style={{
-                  width: '100%', height: INPUT_HEIGHT, backgroundColor: CLAY.canvas,
-                  borderWidth: 1, borderColor: CLAY.hairline, borderRadius: 12,
-                  paddingHorizontal: 16, fontSize: 16, color: CLAY.ink,
-                }}
+                className={cn(clayInput, 'w-full')}
               />
             </View>
 
@@ -342,7 +334,7 @@ export default function AuthScreen() {
               disabled={!canSubmit}
               style={{ width: '100%', maxWidth: 320, opacity: canSubmit ? 1 : 0.5 }}
             >
-              <View className="h-12 rounded-md bg-primary items-center justify-center">
+              <View className="h-11 rounded-md bg-primary items-center justify-center">
                 {isLoading ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
@@ -374,7 +366,6 @@ export default function AuthScreen() {
               disabled={isLoading}
               loading={isLoading}
               fullWidth
-              height={48}
             >
               Continue with Google
             </ClayAnimatedButton>
