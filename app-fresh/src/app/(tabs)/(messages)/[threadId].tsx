@@ -1,13 +1,19 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { FlatList, KeyboardAvoidingView, Platform } from 'react-native';
-import { YStack, XStack, Text, Button, Spinner, Input } from 'tamagui';
+import { YStack, XStack, Text, Input } from 'tamagui';
+import Animated, { SlideInUp } from 'react-native-reanimated';
 import { useLocalSearchParams } from 'expo-router';
+import { ClayAnimatedButton } from '@/components/clay/ClayAnimatedButton';
+import { ClaySpinner } from '@/components/clay/ClaySpinner';
+import { useShakeAnimation } from '@/hooks/useClayAnimations';
 import { useMessages } from '@/hooks/useMessages';
 import { tablesDB } from '@/lib/appwrite';
 import { DATABASE_ID, TABLES } from '@/lib/constants';
 import type { DealThread, Message } from '@/lib/types';
 
-const STATUS_COLORS: Record<string, string> = {
+type StatusColor = '$blue10' | '$orange10' | '$green10' | '$purple10' | '$teal10' | '$gray10' | '$red10';
+
+const STATUS_COLORS: Record<string, StatusColor> = {
   invited: '$blue10',
   negotiating: '$orange10',
   contracted: '$green10',
@@ -35,15 +41,14 @@ function formatRelativeTime(iso: string): string {
 function MessageBubble({ message }: { message: Message }) {
   const isCreator = message.sender_type === 'creator';
   const isSystem = message.sender_type === 'system';
-  const isBrand = message.sender_type === 'brand';
 
   if (isSystem) {
     return (
-      <YStack alignItems="center" marginVertical="$2" paddingHorizontal="$4">
-        <Text fontSize={12} fontStyle="italic" color="$gray9" textAlign="center">
+      <YStack items="center" my="$2" px="$4">
+        <Text fontSize="$caption" fontStyle="italic" color="$muted" text="center">
           {message.body}
         </Text>
-        <Text fontSize={10} color="$gray10" marginTop="$1">
+        <Text fontSize="$caption" color="$muted-soft" mt="$1">
           {formatRelativeTime(message.timestamp)}
         </Text>
       </YStack>
@@ -51,34 +56,59 @@ function MessageBubble({ message }: { message: Message }) {
   }
 
   return (
-    <YStack
-      alignItems={isCreator ? 'flex-end' : 'flex-start'}
-      marginVertical="$1"
-      paddingHorizontal="$4"
-    >
-      {!isCreator && message.agent_name ? (
-        <Text fontSize={11} color="$gray9" marginBottom={2} marginLeft="$1">
-          {message.agent_name}
-        </Text>
-      ) : null}
+    <Animated.View entering={SlideInUp}>
       <YStack
-        backgroundColor={isCreator ? '$blue10' : isBrand ? '$green8' : '$gray5'}
-        borderRadius="$3"
-        paddingHorizontal="$3"
-        paddingVertical="$2"
-        maxWidth="80%"
+        items={isCreator ? 'flex-end' : 'flex-start'}
+        my="$1"
+        px="$4"
       >
-        <Text
-          color={isCreator ? 'white' : '$color'}
-          fontSize={15}
-          lineHeight={20}
+        {!isCreator && message.agent_name ? (
+          <Text fontSize="$caption" color="$muted" mb={2} ml="$1">
+            {message.agent_name}
+          </Text>
+        ) : null}
+        <YStack
+          background={isCreator ? '$brand-teal' : '$surface-card'}
+          rounded="$lg"
+          px="$3"
+          py="$2"
+          maxW="80%"
         >
-          {message.body}
+          <Text
+            color={isCreator ? '$on-dark' : '$ink'}
+            fontSize="$body-md"
+            lineHeight={22}
+          >
+            {message.body}
+          </Text>
+        </YStack>
+        <Text fontSize="$caption" color="$muted-soft" mt={2} mx="$1">
+          {formatRelativeTime(message.timestamp)}
         </Text>
       </YStack>
-      <Text fontSize={10} color="$gray10" marginTop={2} marginHorizontal="$1">
-        {formatRelativeTime(message.timestamp)}
-      </Text>
+    </Animated.View>
+  );
+}
+
+function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
+  const { shake, animatedStyle } = useShakeAnimation();
+
+  useEffect(() => {
+    shake();
+  }, [shake]);
+
+  return (
+    <YStack flex={1} justify="center" items="center" p="$4" background="$canvas">
+      <Animated.View style={animatedStyle}>
+        <YStack items="center" gap="$4" p="$4">
+          <Text color="$red10" text="center" fontSize="$body-sm">
+            {error}
+          </Text>
+          <ClayAnimatedButton variant="secondary" onPress={onRetry}>
+            Retry
+          </ClayAnimatedButton>
+        </YStack>
+      </Animated.View>
     </YStack>
   );
 }
@@ -142,32 +172,22 @@ export default function ThreadDetail() {
   // Loading state
   if (loading) {
     return (
-      <YStack flex={1} justifyContent="center" alignItems="center" gap="$3">
-        <Spinner size="large" color="$blue10" />
-        <Text color="$gray10">Loading messages...</Text>
+      <YStack flex={1} justify="center" items="center" background="$canvas">
+        <ClaySpinner size={40} label="Loading messages..." />
       </YStack>
     );
   }
 
-  // Error state
+  // Error state — shake animation + retry
   if (error) {
-    return (
-      <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" gap="$4">
-        <Text color="$red10" textAlign="center" fontSize={14}>
-          {error}
-        </Text>
-        <Button onPress={refresh} theme="blue">
-          Retry
-        </Button>
-      </YStack>
-    );
+    return <ErrorState error={error} onRetry={refresh} />;
   }
 
   // Empty state — no messages in this thread yet
   if (messages.length === 0) {
     return (
-      <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" gap="$3">
-        <Text fontSize={16} color="$gray10" textAlign="center">
+      <YStack flex={1} justify="center" items="center" p="$4" background="$canvas">
+        <Text fontSize="$body-md" color="$muted" text="center">
           No messages yet — start the conversation
         </Text>
       </YStack>
@@ -182,38 +202,40 @@ export default function ThreadDetail() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
-      <YStack flex={1} backgroundColor="$background">
+      <YStack flex={1} background="$canvas">
         {/* Header: campaign_title, agent_assigned, status chip */}
         <XStack
-          paddingHorizontal="$4"
-          paddingVertical="$3"
+          px="$4"
+          py="$3"
+          background="$canvas"
           borderBottomWidth={1}
-          borderBottomColor="$gray3"
-          backgroundColor="$background"
-          alignItems="center"
-          justifyContent="space-between"
+          borderBottomColor="$hairline"
+          items="center"
+          justify="space-between"
         >
           <YStack flex={1} gap="$1">
-            <Text fontWeight="bold" fontSize={18} color="$color" numberOfLines={1}>
+            <Text fontSize="$title-md" fontWeight="600" color="$ink" numberOfLines={1}>
               {thread?.campaign_title ?? 'Thread'}
             </Text>
             {thread?.agent_assigned ? (
-              <Text fontSize={13} color="$gray9">
+              <Text fontSize="$body-sm" color="$muted">
                 {thread.agent_assigned}
               </Text>
             ) : null}
           </YStack>
           {thread ? (
-            <XStack
-              backgroundColor={statusColor}
-              borderRadius="$3"
-              paddingHorizontal={10}
-              paddingVertical={3}
+            <Text
+              fontSize="$caption-uppercase"
+              fontWeight="600"
+              color="$on-primary"
+              background={statusColor}
+              rounded="$sm"
+              px={10}
+              py={3}
+              textTransform="capitalize"
             >
-              <Text fontSize={11} fontWeight="bold" color="white" textTransform="capitalize">
-                {thread.status.replace(/_/g, ' ')}
-              </Text>
-            </XStack>
+              {thread.status.replace(/_/g, ' ')}
+            </Text>
           ) : null}
         </XStack>
 
@@ -232,12 +254,12 @@ export default function ThreadDetail() {
 
         {/* Input bar */}
         <XStack
-          paddingHorizontal="$4"
-          paddingVertical="$2"
+          px="$4"
+          py="$2"
+          background="$canvas"
           borderTopWidth={1}
-          borderTopColor="$gray3"
-          backgroundColor="$background"
-          alignItems="center"
+          borderTopColor="$hairline"
+          items="center"
           gap="$2"
         >
           <Input
@@ -245,31 +267,24 @@ export default function ThreadDetail() {
             placeholder="Type a message..."
             value={inputText}
             onChangeText={setInputText}
-            borderRadius="$4"
+            background="$canvas"
             borderWidth={1}
-            borderColor="$gray4"
-            fontSize={15}
-            paddingHorizontal="$3"
-            paddingVertical="$2"
+            borderColor="$hairline"
+            rounded="$md"
+            height={44}
+            fontSize="$body-md"
+            px="$3"
             onSubmitEditing={handleSend}
             returnKeyType="send"
           />
-          <Button
+          <ClayAnimatedButton
+            variant="primary"
             onPress={handleSend}
+            loading={sending}
             disabled={!inputText.trim() || sending}
-            theme={inputText.trim() ? 'blue' : undefined}
-            opacity={inputText.trim() ? 1 : 0.5}
-            borderRadius="$4"
-            paddingHorizontal="$4"
           >
-            {sending ? (
-              <Spinner size="small" />
-            ) : (
-              <Text fontWeight="bold" color="white">
-                Send
-              </Text>
-            )}
-          </Button>
+            Send
+          </ClayAnimatedButton>
         </XStack>
       </YStack>
     </KeyboardAvoidingView>

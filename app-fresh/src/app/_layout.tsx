@@ -2,10 +2,13 @@ import '@/lib/polyfills';
 import { useEffect, useRef } from 'react';
 import { Slot } from 'expo-router';
 import { ClerkProvider, useAuth } from '@clerk/clerk-expo';
-import { TamaguiProvider, YStack, Spinner } from 'tamagui';
+import { TamaguiProvider, YStack } from 'tamagui';
 import config from '@/tamagui.config';
 import { createAppwriteSession } from '@/lib/auth-bridge';
-import LoginScreen from './login';
+import { secureTokenCache } from '@/lib/tokenCache';
+import AuthScreen from '@/components/auth/AuthScreen';
+import { useClayFonts } from '@/lib/fonts';
+import { ClaySpinner } from '@/components/clay/ClaySpinner';
 
 const CLERK_PUBLISHABLE_KEY = process.env.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY;
 if (!CLERK_PUBLISHABLE_KEY) {
@@ -14,9 +17,12 @@ if (!CLERK_PUBLISHABLE_KEY) {
 
 function AuthGate() {
   const { isSignedIn, isLoaded, getToken } = useAuth();
+  const [fontsLoaded, fontsError] = useClayFonts();
   const appwriteSessionCreated = useRef(false);
 
   useEffect(() => {
+    if (!isLoaded) return;
+
     if (isSignedIn && !appwriteSessionCreated.current) {
       appwriteSessionCreated.current = true;
       (async () => {
@@ -30,18 +36,31 @@ function AuthGate() {
         }
       })();
     }
-  }, [isSignedIn, getToken]);
+
+    if (!isSignedIn) {
+      appwriteSessionCreated.current = false;
+    }
+  }, [isSignedIn, isLoaded, getToken]);
+
+  if (!fontsLoaded && !fontsError) {
+    return (
+      <YStack flex={1} justify="center" items="center" background="$canvas">
+        <ClaySpinner size={40} />
+      </YStack>
+    );
+  }
 
   if (!isLoaded) {
     return (
-      <YStack flex={1} justifyContent="center" alignItems="center">
-        <Spinner size="large" />
+      <YStack flex={1} justify="center" items="center" background="$canvas">
+        <ClaySpinner size={40} label="Loading..." />
       </YStack>
     );
   }
 
   if (!isSignedIn) {
-    return <LoginScreen />;
+    // Render auth UI directly — avoids <Redirect /> infinite loop with Tamagui portal
+    return <AuthScreen />;
   }
 
   return <Slot />;
@@ -49,7 +68,7 @@ function AuthGate() {
 
 export default function RootLayout() {
   return (
-    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY}>
+    <ClerkProvider publishableKey={CLERK_PUBLISHABLE_KEY} tokenCache={secureTokenCache}>
       <TamaguiProvider config={config} defaultTheme="light">
         <AuthGate />
       </TamaguiProvider>

@@ -1,11 +1,18 @@
-import React, { useCallback } from 'react';
-import { FlatList, TouchableOpacity } from 'react-native';
-import { YStack, XStack, Text, Button, Spinner, H2, Card } from 'tamagui';
+import React, { useCallback, useEffect } from 'react';
+import { FlatList } from 'react-native';
+import Animated from 'react-native-reanimated';
+import { YStack, XStack, Text } from 'tamagui';
 import { useRouter } from 'expo-router';
 import { useThreads } from '@/hooks/useThreads';
 import type { DealThread } from '@/lib/types';
+import { ClayAnimatedCard } from '@/components/clay/ClayAnimatedCard';
+import { ClaySpinner } from '@/components/clay/ClaySpinner';
+import { ClayAnimatedButton } from '@/components/clay/ClayAnimatedButton';
+import { useShakeAnimation } from '@/hooks/useClayAnimations';
 
-const STATUS_COLORS: Record<string, string> = {
+type StatusColor = '$blue10' | '$orange10' | '$green10' | '$purple10' | '$teal10' | '$gray10' | '$red10';
+
+const STATUS_COLORS: Record<string, StatusColor> = {
   invited: '$blue10',
   negotiating: '$orange10',
   contracted: '$green10',
@@ -31,86 +38,110 @@ function formatTimestamp(iso: string | undefined): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
+function ErrorState({ error, onRetry }: { error: string; onRetry: () => void }) {
+  const { shake, animatedStyle } = useShakeAnimation();
+
+  useEffect(() => {
+    shake();
+  }, [shake]);
+
+  return (
+    <YStack
+      flex={1}
+      justify="center"
+      items="center"
+      p="$4"
+      gap="$4"
+      background="$canvas"
+    >
+      <Animated.View style={animatedStyle}>
+        <YStack items="center" gap="$4" maxW={320}>
+          <Text color="$error" text="center" fontSize="$body-sm">
+            {error}
+          </Text>
+          <ClayAnimatedButton variant="secondary" onPress={onRetry}>
+            Retry
+          </ClayAnimatedButton>
+        </YStack>
+      </Animated.View>
+    </YStack>
+  );
+}
+
 function ThreadRow({
   thread,
+  index,
   onPress,
 }: {
   thread: DealThread & { lastMessagePreview: string };
+  index: number;
   onPress: () => void;
 }) {
   const statusColor = STATUS_COLORS[thread.status] ?? '$gray10';
   const hasUnread = (thread.unread_count ?? 0) > 0;
 
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.7}>
-      <Card
-        marginHorizontal="$4"
-        marginVertical="$1.5"
-        padding="$4"
-        borderRadius="$4"
-        borderWidth={1}
-        borderColor={hasUnread ? '$blue8' : '$gray3'}
-      >
+    <YStack mx="$4" my="$1.5">
+      <ClayAnimatedCard onPress={onPress} delay={index * 80}>
         <YStack gap="$2">
-          {/* Top row: title + unread badge */}
-          <XStack justifyContent="space-between" alignItems="center">
-            <XStack flex={1} alignItems="center" gap="$2">
+          {/* Top row: title + unread badge + timestamp */}
+          <XStack justify="space-between" items="center">
+            <XStack flex={1} items="center" gap="$2">
               <Text
-                fontWeight="bold"
-                fontSize={16}
-                color="$color"
+                fontSize="$title-sm"
+                fontWeight="600"
+                color="$ink"
                 numberOfLines={1}
                 flex={1}
               >
                 {thread.campaign_title}
               </Text>
               {hasUnread && (
-                <XStack
-                  backgroundColor="$red9"
-                  borderRadius={12}
-                  minWidth={22}
-                  height={22}
-                  justifyContent="center"
-                  alignItems="center"
-                  paddingHorizontal={6}
+                <Text
+                  fontSize="$caption"
+                  color="$on-primary"
+                  background="$error"
+                  rounded="$pill"
+                  minW={22}
+                  text="center"
+                  px={6}
                 >
-                  <Text fontSize={11} fontWeight="bold" color="white">
-                    {thread.unread_count > 99 ? '99+' : thread.unread_count}
-                  </Text>
-                </XStack>
+                  {thread.unread_count > 99 ? '99+' : thread.unread_count}
+                </Text>
               )}
             </XStack>
-            <Text fontSize={12} color="$gray9" marginLeft="$2">
+            <Text fontSize="$caption" color="$muted-soft" ml="$2">
               {formatTimestamp(thread.last_message_at)}
             </Text>
           </XStack>
 
           {/* Preview text */}
-          <Text fontSize={14} color="$gray10" numberOfLines={2}>
+          <Text fontSize="$body-sm" color="$muted" numberOfLines={2}>
             {thread.lastMessagePreview || 'No messages yet'}
           </Text>
 
           {/* Bottom row: status chip + agent */}
-          <XStack justifyContent="space-between" alignItems="center" marginTop="$1">
-            <XStack
-              backgroundColor={statusColor}
-              borderRadius="$3"
-              paddingHorizontal={8}
-              paddingVertical={2}
+          <XStack justify="space-between" items="center" mt="$1">
+            <Text
+              fontSize="$caption-uppercase"
+              fontWeight="600"
+              color="$on-primary"
+              background={statusColor}
+              rounded="$sm"
+              px={8}
+              py={2}
             >
-              <Text fontSize={11} fontWeight="bold" color="white" textTransform="capitalize">
-                {thread.status.replace(/_/g, ' ')}
-              </Text>
-            </XStack>
+              {thread.status.replace(/_/g, ' ')}
+            </Text>
             {thread.agent_assigned && (
-              <Text fontSize={12} color="$gray9">
+              <Text fontSize="$caption" color="$muted-soft">
                 {thread.agent_assigned}
               </Text>
             )}
           </XStack>
         </YStack>
-      </Card>
-    </TouchableOpacity>
+      </ClayAnimatedCard>
+    </YStack>
   );
 }
 
@@ -126,8 +157,8 @@ export default function MessagesScreen() {
   );
 
   const renderItem = useCallback(
-    ({ item }: { item: DealThread & { lastMessagePreview: string } }) => (
-      <ThreadRow thread={item} onPress={() => handlePress(item)} />
+    ({ item, index }: { item: DealThread & { lastMessagePreview: string }; index: number }) => (
+      <ThreadRow thread={item} index={index} onPress={() => handlePress(item)} />
     ),
     [handlePress]
   );
@@ -140,32 +171,34 @@ export default function MessagesScreen() {
   // Loading state
   if (loading) {
     return (
-      <YStack flex={1} justifyContent="center" alignItems="center" gap="$3">
-        <Spinner size="large" color="$blue10" />
-        <Text color="$gray10">Loading threads...</Text>
+      <YStack
+        flex={1}
+        justify="center"
+        items="center"
+        background="$canvas"
+      >
+        <ClaySpinner size={40} label="Loading threads..." />
       </YStack>
     );
   }
 
   // Error state
   if (error) {
-    return (
-      <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" gap="$4">
-        <Text color="$red10" textAlign="center" fontSize={14}>
-          {error}
-        </Text>
-        <Button onPress={refresh} theme="blue">
-          Retry
-        </Button>
-      </YStack>
-    );
+    return <ErrorState error={error} onRetry={refresh} />;
   }
 
   // Empty state
   if (threads.length === 0) {
     return (
-      <YStack flex={1} justifyContent="center" alignItems="center" padding="$4" gap="$3">
-        <Text fontSize={16} color="$gray10" textAlign="center">
+      <YStack
+        flex={1}
+        justify="center"
+        items="center"
+        p="$4"
+        gap="$3"
+        background="$canvas"
+      >
+        <Text fontSize="$body-sm" color="$muted" text="center">
           No deal threads yet — your agent will start outreach soon
         </Text>
       </YStack>
@@ -174,7 +207,7 @@ export default function MessagesScreen() {
 
   // Threads list
   return (
-    <YStack flex={1} backgroundColor="$background">
+    <YStack flex={1} background="$canvas">
       <FlatList
         data={threads}
         renderItem={renderItem}

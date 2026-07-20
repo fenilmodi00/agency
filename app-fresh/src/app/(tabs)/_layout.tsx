@@ -1,39 +1,18 @@
 import { Tabs } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { ClayTabBar } from '@/components/clay/ClayTabBar';
 
 export default function TabsLayout() {
   return (
-    <Tabs>
-      <Tabs.Screen 
-        name="(home)" 
-        options={{ 
-          title: 'Home',
-          tabBarLabel: 'Home',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" color={color} size={size} />
-          ),
-        }} 
-      />
-      <Tabs.Screen 
-        name="(messages)" 
-        options={{ 
-          title: 'Messages',
-          tabBarLabel: 'Messages',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="chatbubbles" color={color} size={size} />
-          ),
-        }} 
-      />
-      <Tabs.Screen 
-        name="(profile)" 
-        options={{ 
-          title: 'Profile',
-          tabBarLabel: 'Profile',
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" color={color} size={size} />
-          ),
-        }} 
-      />
+    <Tabs
+      tabBar={(props) => <ClayTabBar {...props} />}
+      screenOptions={{
+        headerShown: false,
+        tabBarShowLabel: false,
+      }}
+    >
+      <Tabs.Screen name="(home)" options={{ title: 'Home' }} />
+      <Tabs.Screen name="(messages)" options={{ title: 'Messages' }} />
+      <Tabs.Screen name="(profile)" options={{ title: 'Profile' }} />
     </Tabs>
   );
 }

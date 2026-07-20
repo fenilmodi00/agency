@@ -139,6 +139,72 @@ jest.mock('expo-web-browser', () => ({
   openAuthSessionAsync: jest.fn().mockResolvedValue({ type: 'success' }),
 }));
 
+// Mock react-native-reanimated
+jest.mock('react-native-reanimated', () => {
+  const React = require('react');
+  const { View: RNView, Text: RNText, ScrollView: RNScrollView, FlatList: RNFlatList, Image: RNImage } = require('react-native');
+
+  const Reanimated = {
+    View: (props: any) => React.createElement(RNView, props),
+    Text: (props: any) => React.createElement(RNText, props),
+    ScrollView: (props: any) => React.createElement(RNScrollView, props),
+    FlatList: (props: any) => React.createElement(RNFlatList, props),
+    Image: (props: any) => React.createElement(RNImage, props),
+  };
+
+  return {
+    __esModule: true,
+    useSharedValue: (init: any) => ({ value: init }),
+    useAnimatedStyle: (cb: any) => cb(),
+    useAnimatedProps: (cb: any) => cb(),
+    useDerivedValue: (cb: any) => ({ value: cb() }),
+    useAnimatedReaction: jest.fn(),
+    useAnimatedGestureHandler: (handlers: any) => handlers,
+    useAnimatedScrollHandler: (handlers: any) => handlers,
+    useHandler: jest.fn(),
+    withTiming: (to: any) => to,
+    withSpring: (to: any) => to,
+    withDecay: (config: any) => config,
+    withSequence: (...args: any[]) => args[args.length - 1],
+    withRepeat: (anim: any) => anim,
+    withDelay: (delay: any, anim: any) => anim,
+    cancelAnimation: jest.fn(),
+    measure: jest.fn(),
+    runOnUI: (fn: any) => fn,
+    runOnJS: (fn: any) => fn,
+    FadeIn: { duration: jest.fn().mockReturnThis(), delay: jest.fn().mockReturnThis() },
+    FadeInUp: { duration: jest.fn().mockReturnThis(), delay: jest.fn().mockReturnThis() },
+    FadeInDown: { duration: jest.fn().mockReturnThis(), delay: jest.fn().mockReturnThis() },
+    FadeInLeft: { duration: jest.fn().mockReturnThis(), delay: jest.fn().mockReturnThis() },
+    FadeInRight: { duration: jest.fn().mockReturnThis(), delay: jest.fn().mockReturnThis() },
+    FadeOut: { duration: jest.fn().mockReturnThis(), delay: jest.fn().mockReturnThis() },
+    SlideInUp: { duration: jest.fn().mockReturnThis(), delay: jest.fn().mockReturnThis() },
+    SlideInDown: { duration: jest.fn().mockReturnThis(), delay: jest.fn().mockReturnThis() },
+    SlideInLeft: { duration: jest.fn().mockReturnThis(), delay: jest.fn().mockReturnThis() },
+    SlideInRight: { duration: jest.fn().mockReturnThis(), delay: jest.fn().mockReturnThis() },
+    LinearTransition: { duration: jest.fn().mockReturnThis(), delay: jest.fn().mockReturnThis() },
+    Easing: {
+      linear: jest.fn(),
+      ease: jest.fn(),
+      quad: jest.fn(),
+      cubic: jest.fn(),
+      poly: jest.fn(),
+      sin: jest.fn(),
+      circle: jest.fn(),
+      exp: jest.fn(),
+      elastic: jest.fn(),
+      back: jest.fn(),
+      bounce: jest.fn(),
+      bezier: jest.fn(),
+      in: jest.fn(),
+      out: jest.fn(),
+      inOut: jest.fn(),
+    },
+    Animated: Reanimated,
+    default: Reanimated,
+  };
+});
+
 // Mock tamagui
 jest.mock('tamagui', () => {
   const React = require('react');
@@ -149,6 +215,7 @@ jest.mock('tamagui', () => {
       config: {},
     })),
     TamaguiProvider: ({ children }: { children: React.ReactNode }) => children,
+    useTheme: () => ({}),
     YStack: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, children),
     XStack: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, children),
     Stack: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, children),

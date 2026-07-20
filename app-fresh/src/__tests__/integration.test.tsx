@@ -66,7 +66,7 @@ jest.mock('@/hooks/useDashboard', () => ({
 
 jest.mock('tamagui', () => {
   const React = require('react');
-  const { TextInput, Text, View, TouchableOpacity, ActivityIndicator } = require('react-native');
+  const { TextInput, Text, View, TouchableOpacity, ActivityIndicator, ScrollView: RNScrollView } = require('react-native');
 
   return {
     YStack: ({ children, ...props }: any) => React.createElement(View, props, children),
@@ -77,6 +77,10 @@ jest.mock('tamagui', () => {
     Input: (props: any) => React.createElement(TextInput, props),
     Spinner: () => React.createElement(ActivityIndicator, null),
     H2: ({ children, ...props }: any) => React.createElement(Text, props, children),
+    H3: ({ children, ...props }: any) => React.createElement(Text, props, children),
+    Card: ({ children, ...props }: any) => React.createElement(View, props, children),
+    ScrollView: ({ children, ...props }: any) => React.createElement(RNScrollView, props, children),
+    useTheme: () => ({}),
   };
 });
 
