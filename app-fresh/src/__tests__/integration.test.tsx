@@ -55,6 +55,15 @@ jest.mock('@/lib/instagram', () => ({
   fetchProfile: jest.fn().mockRejectedValue(new Error('not connected')),
 }));
 
+jest.mock('@/hooks/useDashboard', () => ({
+  useDashboard: () => ({
+    data: { creator: null, threads: [], deals: [] },
+    loading: false,
+    error: null,
+    refresh: jest.fn().mockResolvedValue(undefined),
+  }),
+}));
+
 jest.mock('tamagui', () => {
   const React = require('react');
   const { TextInput, Text, View, TouchableOpacity, ActivityIndicator } = require('react-native');
@@ -104,11 +113,11 @@ describe('Integration Tests', () => {
       await fireEvent.press(screen.getByText('Connect'));
 
       await waitFor(() => {
-        expect(mockLoginInstagram).toHaveBeenCalledWith('test-user-id', 'testuser', 'testpass');
+        expect(mockLoginInstagram).toHaveBeenCalledWith('test-token', 'test-user-id', 'testuser', 'testpass');
       });
     });
 
-    it('shows connected badge after successful login', async () => {
+    it('shows welcome message after successful login', async () => {
       mockLoginInstagram.mockResolvedValue({
         pk: '12345',
         username: 'test_creator',
@@ -121,8 +130,7 @@ describe('Integration Tests', () => {
       await fireEvent.press(screen.getByText('Connect'));
 
       await waitFor(() => {
-        expect(screen.getByText(/Connected/)).toBeTruthy();
-        expect(screen.getByText('@test_creator')).toBeTruthy();
+        expect(screen.getByText(/Welcome, @test_creator/)).toBeTruthy();
       });
     });
 
@@ -169,15 +177,15 @@ describe('Integration Tests', () => {
       await fireEvent.press(screen.getByText('Connect'));
 
       await waitFor(() => {
-        expect(screen.getByText(/Connected/)).toBeTruthy();
+        expect(screen.getByText(/Welcome, @test_creator/)).toBeTruthy();
       });
 
-      // After successful login, inputs are cleared from DOM (replaced by Connected badge)
+      // After successful login, inputs are cleared from DOM (replaced by dashboard)
       expect(screen.queryByPlaceholderText('Instagram username')).toBeNull();
       expect(screen.queryByPlaceholderText('Instagram password')).toBeNull();
     });
 
-    it('shows login form again on session_expired error', async () => {
+    it('shows error state with retry on session_expired error', async () => {
       mockLoginInstagram.mockRejectedValue(new Error('session_expired'));
 
       await render(<Home />);
@@ -187,9 +195,8 @@ describe('Integration Tests', () => {
       await fireEvent.press(screen.getByText('Connect'));
 
       await waitFor(() => {
-        expect(screen.getByPlaceholderText('Instagram username')).toBeTruthy();
-        expect(screen.getByPlaceholderText('Instagram password')).toBeTruthy();
-        expect(screen.getByText('Connect')).toBeTruthy();
+        expect(screen.getByText('session_expired')).toBeTruthy();
+        expect(screen.getByText('Retry')).toBeTruthy();
       });
     });
   });

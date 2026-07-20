@@ -142,7 +142,7 @@ jest.mock('expo-web-browser', () => ({
 // Mock tamagui
 jest.mock('tamagui', () => {
   const React = require('react');
-  const { Text: RNText, View, ScrollView, Image } = require('react-native');
+  const { Text: RNText, View, ScrollView, Image, TouchableOpacity } = require('react-native');
   
   return {
     createTamagui: jest.fn(() => ({
@@ -153,8 +153,16 @@ jest.mock('tamagui', () => {
     XStack: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, children),
     Stack: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, children),
     Text: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
-    Button: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, React.createElement(RNText, null, children)),
-    Input: () => null,
+    Button: ({ children, onPress, disabled, ...props }: any) =>
+      React.createElement(
+        TouchableOpacity,
+        { onPress, disabled, ...props },
+        React.createElement(RNText, null, children)
+      ),
+    Input: (props: any) => {
+      const { TextInput } = require('react-native');
+      return React.createElement(TextInput, props);
+    },
     H1: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
     H2: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
     H3: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
@@ -165,7 +173,10 @@ jest.mock('tamagui', () => {
     Card: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, children),
     Spinner: () => null,
     Separator: () => null,
-    Avatar: () => React.createElement(Image, null),
+    Avatar: Object.assign(() => React.createElement(Image, null), {
+      Image: (props: any) => React.createElement(Image, props),
+      Fallback: (props: any) => React.createElement(View, props),
+    }),
     Heading: ({ children }: { children: React.ReactNode }) => React.createElement(RNText, null, children),
     Sheet: ({ children }: { children: React.ReactNode }) => React.createElement(View, null, children),
   };
