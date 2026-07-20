@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useUser } from '@clerk/clerk-expo';
+import { useUser, useAuth } from '@clerk/clerk-expo';
 import { tablesDB } from '@/lib/appwrite';
 import { DATABASE_ID, TABLES } from '@/lib/constants';
 import { Query } from 'appwrite';
@@ -15,7 +15,6 @@ export interface PostRow {
   video_view_count: number;
   is_video: boolean;
   display_url?: string;
-  [key: string]: unknown;
 }
 
 interface UseCreatorProfileResult {
@@ -31,6 +30,7 @@ interface UseCreatorProfileResult {
 
 export function useCreatorProfile(): UseCreatorProfileResult {
   const { user } = useUser();
+  const { getToken } = useAuth();
   const clerkUserId = user?.id ?? '';
   const [creator, setCreator] = useState<Creator | null>(null);
   const [dealThreads, setDealThreads] = useState<DealThread[]>([]);
@@ -48,6 +48,8 @@ export function useCreatorProfile(): UseCreatorProfileResult {
     try {
       setIsLoading(true);
       setError(null);
+      setRecentMedia([]);
+      setInsights(null);
 
       const creatorsResult = await tablesDB.listRows({
         databaseId: DATABASE_ID,
@@ -97,11 +99,12 @@ export function useCreatorProfile(): UseCreatorProfileResult {
 
       // 4. Fetch media and insights from FastAPI
       try {
-        const media = await fetchMedia();
+        const media = await fetchMedia(await getToken() ?? '');
         if (!cancelledRef.current) {
           setRecentMedia(media);
         }
       } catch (mediaErr) {
+        console.warn(mediaErr);
         if (mediaErr instanceof Error && mediaErr.message === 'session_expired') {
           setError('session_expired');
           return;
@@ -110,7 +113,7 @@ export function useCreatorProfile(): UseCreatorProfileResult {
       }
 
       try {
-        const insightsData = await fetchInsights();
+        const insightsData = await fetchInsights(await getToken() ?? '');
         if (!cancelledRef.current) {
           if (insightsData.error) {
             // Business account required — not an error, just unavailable
@@ -120,6 +123,7 @@ export function useCreatorProfile(): UseCreatorProfileResult {
           }
         }
       } catch (insightsErr) {
+        console.warn(insightsErr);
         if (insightsErr instanceof Error && insightsErr.message === 'session_expired') {
           setError('session_expired');
           return;

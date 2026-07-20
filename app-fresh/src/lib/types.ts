@@ -64,7 +64,7 @@ export interface Message {
   thread_id: string;
   sender_type: 'creator' | 'agent' | 'brand' | 'system';
   body: string;
-  attachments: string[];
+  attachments: string;
   agent_name: string | null;
   is_read: boolean;
   timestamp: string;
