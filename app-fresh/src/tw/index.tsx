@@ -1,7 +1,6 @@
 import { useCssElement } from 'react-native-css';
 import { useUnstableNativeVariable } from 'nativewind';
 import { Link as RouterLink } from 'expo-router';
-import Animated from 'react-native-reanimated';
 import React from 'react';
 import {
   View as RNView, Text as RNText, Pressable as RNPressable,
@@ -49,15 +48,9 @@ export const TextInput = (
 ) => useCssElement(RNTextInput, props, { className: 'style' });
 TextInput.displayName = 'CSS(TextInput)';
 
-export const AnimatedScrollView = (
-  props: React.ComponentProps<typeof Animated.ScrollView> & {
-    className?: string; contentClassName?: string; contentContainerClassName?: string;
-  },
-) => useCssElement(Animated.ScrollView, props, {
-  className: 'style',
-  contentClassName: 'contentContainerStyle',
-  contentContainerClassName: 'contentContainerStyle',
-});
+/** Alias — prefer Reanimated scroll views from screen files when needed.
+ *  Kept as RN ScrollView here so `@/tw` never statically imports reanimated (web #8285). */
+export const AnimatedScrollView = ScrollView;
 
 function XXTouchableHighlight(props: React.ComponentProps<typeof RNTouchableHighlight>) {
   const { underlayColor, ...style } = (StyleSheet.flatten(props.style) || {}) as ViewStyle & {

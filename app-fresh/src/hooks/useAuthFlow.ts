@@ -28,6 +28,16 @@ interface UseAuthFlowReturn {
   resendOTP: () => Promise<void>;
 }
 
+function extractClerkError(err: any): string {
+  return (
+    err.errors?.[0]?.longMessage ||
+    err.errors?.[0]?.message ||
+    err.longMessage ||
+    err.message ||
+    'Something went wrong'
+  );
+}
+
 export function useAuthFlow(): UseAuthFlowReturn {
   const router = useRouter();
   const { signIn, isLoaded: signInLoaded, setActive: setSignInActive } = useSignIn();
@@ -72,10 +82,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
       passwordRef.current = password;
 
       try {
-        const result = await signUp.create({
-          emailAddress: email,
-          password,
-        });
+        const result = await signUp.create({ emailAddress: email, password });
 
         if (result.status === 'complete') {
           await setSignUpActive({ session: result.createdSessionId });
@@ -84,8 +91,9 @@ export function useAuthFlow(): UseAuthFlowReturn {
           return;
         }
 
-        // Prepare email verification OTP
+        // Send email verification code
         await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+
         setState((s) => ({
           ...s,
           step: 'otp-sent',
@@ -93,8 +101,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
           pendingIdentifier: email,
         }));
       } catch (err: any) {
-        const msg = err.errors?.[0]?.message || err.message || 'Sign up failed';
-        setError(msg);
+        setError(extractClerkError(err));
       } finally {
         setLoading(false);
       }
@@ -127,10 +134,12 @@ export function useAuthFlow(): UseAuthFlowReturn {
         if (!emailCodeFactor?.emailAddressId) {
           throw new Error('Email code sign-in is not available');
         }
+
         await result.prepareFirstFactor({
           strategy: 'email_code',
           emailAddressId: emailCodeFactor.emailAddressId,
         });
+
         setState((s) => ({
           ...s,
           step: 'otp-sent',
@@ -138,8 +147,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
           pendingIdentifier: email,
         }));
       } catch (err: any) {
-        const msg = err.errors?.[0]?.message || err.message || 'Failed to send OTP';
-        setError(msg);
+        setError(extractClerkError(err));
       } finally {
         setLoading(false);
       }
@@ -157,29 +165,42 @@ export function useAuthFlow(): UseAuthFlowReturn {
       try {
         if (state.mode === 'signup' && signUp) {
           const result = await signUp.attemptEmailAddressVerification({ code });
+
           if (result.status === 'complete') {
             await setSignUpActive({ session: result.createdSessionId });
             setState((s) => ({ ...s, step: 'complete' }));
             navigateToHome();
           } else {
-            setError('Verification incomplete. Please try again.');
+            setState((s) => ({
+              ...s,
+              step: 'otp-sent',
+              error: 'Verification incomplete. Please try again.',
+            }));
           }
         } else if (signIn) {
           const result = await signIn.attemptFirstFactor({
             strategy: 'email_code',
             code,
           });
+
           if (result.status === 'complete') {
             await setSignInActive({ session: result.createdSessionId });
             setState((s) => ({ ...s, step: 'complete' }));
             navigateToHome();
           } else {
-            setError('Verification incomplete. Please try again.');
+            setState((s) => ({
+              ...s,
+              step: 'otp-sent',
+              error: 'Verification incomplete. Please try again.',
+            }));
           }
         }
       } catch (err: any) {
-        const msg = err.errors?.[0]?.message || err.message || 'Invalid OTP';
-        setError(msg);
+        setState((s) => ({
+          ...s,
+          step: 'otp-sent',
+          error: extractClerkError(err),
+        }));
       } finally {
         setLoading(false);
       }
@@ -222,8 +243,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
         });
       }
     } catch (err: any) {
-      const msg = err.errors?.[0]?.message || err.message || 'Failed to resend OTP';
-      setError(msg);
+      setError(extractClerkError(err));
     } finally {
       setLoading(false);
     }
@@ -244,8 +264,7 @@ export function useAuthFlow(): UseAuthFlowReturn {
         setError('Google sign-in was cancelled');
       }
     } catch (err: any) {
-      const msg = err.errors?.[0]?.message || err.message || 'Google sign-in failed';
-      setError(msg);
+      setError(extractClerkError(err));
     } finally {
       setLoading(false);
     }

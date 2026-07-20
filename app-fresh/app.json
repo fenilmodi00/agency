@@ -11,6 +11,7 @@
       "supportsTablet": true
     },
     "android": {
+      "softwareKeyboardLayoutMode": "resize",
       "navigationBar": {
         "backgroundColor": "#fffaf0",
         "barStyle": "dark"
@@ -31,7 +32,8 @@
       "expo-secure-store",
       "expo-router",
       "expo-web-browser",
-      "expo-font"
+      "expo-font",
+      "expo-system-ui"
     ]
   }
 }
