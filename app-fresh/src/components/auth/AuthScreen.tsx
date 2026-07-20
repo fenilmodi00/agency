@@ -226,21 +226,21 @@ export default function AuthScreen() {
   if (showOTP) {
     return (
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <View style={{ flex: 1, backgroundColor: CLAY.canvas, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-          <View style={{ width: '100%', maxWidth: 400, alignItems: 'center', gap: 24 }}>
+        <View className="flex-1 bg-canvas items-center px-6" style={{ paddingTop: 100 }}>
+          <View className="w-full max-w-[400px] items-center gap-6">
             {/* OTP Header */}
             <View className="items-center gap-3 max-w-[320px]">
               <Text className="text-title-lg font-semibold text-ink tracking-[-0.3px] text-center">
                 Verify your email
               </Text>
-              <Text className="text-body-sm text-muted text-center leading-[22px]">
+              <Text className="text-body-sm text-muted text-center" style={{ lineHeight: 22 }}>
                 Enter the 6-digit code sent to{' '}
                 <Text className="font-semibold text-body-strong">{otpEmail || 'your email'}</Text>
               </Text>
             </View>
 
             {/* OTP Input */}
-            <Animated.View style={[{ width: '100%' }, shakeStyle]}>
+            <Animated.View className="w-full" style={shakeStyle}>
               <OTPInput value={otpCode} onChange={setOtpCode} disabled={isLoading} />
             </Animated.View>
 
@@ -254,7 +254,7 @@ export default function AuthScreen() {
               <Text className="text-error text-sm text-center max-w-[320px] leading-5">{error}</Text>
             )}
 
-            {/* Manual Verify Button (fallback) */}
+            {/* Manual Verify Button */}
             <View className="w-full max-w-[320px]">
               <ClayAnimatedButton
                 variant="primary"
@@ -292,10 +292,10 @@ export default function AuthScreen() {
   // ─── FORM VIEW ───
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-      <View style={{ flex: 1, backgroundColor: CLAY.canvas, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
-        <View style={{ width: '100%', maxWidth: 400, alignItems: 'center', gap: 20 }}>
+      <View className="flex-1 bg-canvas items-center px-6" style={{ paddingTop: 80 }}>
+        <View className="w-full max-w-[400px] items-center gap-5">
           {/* Brand */}
-          <View style={{ alignItems: 'center', gap: 6 }}>
+          <View className="items-center gap-1.5">
             <Text className="text-display-sm font-medium text-ink tracking-[-0.5px] text-center">
               Creator Workspace
             </Text>
@@ -317,9 +317,9 @@ export default function AuthScreen() {
           <CapsuleToggle mode={mode} onChange={setMode} />
 
           {/* Form */}
-          <View style={{ width: '100%', maxWidth: 320, gap: 12, alignItems: 'center' }}>
+          <View className="w-full max-w-[320px] items-center gap-3">
             {/* Email */}
-            <View style={{ width: '100%' }}>
+            <View className="w-full">
               <TextInput
                 placeholder="Email address" value={email} onChangeText={setEmail}
                 autoCapitalize="none" keyboardType="email-address" autoComplete="email"
@@ -348,7 +348,7 @@ export default function AuthScreen() {
                 {isLoading ? (
                   <ActivityIndicator size="small" color="#ffffff" />
                 ) : (
-                  <View style={{ height: 20, alignItems: 'center', justifyContent: 'center' }}>
+                  <View className="h-5 items-center justify-center">
                     <Animated.View style={[{ position: 'absolute' }, loginFadeStyle]}>
                       <Text className="text-button font-semibold text-on-primary">Continue with Email</Text>
                     </Animated.View>
@@ -382,7 +382,7 @@ export default function AuthScreen() {
           </View>
 
           {/* Helper */}
-          <View style={{ height: 36, alignItems: 'center', justifyContent: 'center' }}>
+          <View className="h-9 items-center justify-center">
             <Animated.View style={[{ position: 'absolute', alignItems: 'center', paddingHorizontal: 24 }, loginFadeStyle]}>
               <Text className="text-caption text-muted-soft text-center">
                 We'll send you a verification code to sign in.
