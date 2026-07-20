@@ -1,9 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  ScrollView,
   TextInput as RNTextInput,
   Pressable,
 } from 'react-native';
@@ -13,6 +12,7 @@ import Animated, {
   withTiming,
   Easing,
 } from 'react-native-reanimated';
+import { Ionicons } from '@expo/vector-icons';
 import { View, Text, TextInput } from '@/tw';
 import { cn, clayInput } from '@/tw/cn';
 import { ClayAnimatedButton } from '@/components/clay/ClayAnimatedButton';
@@ -71,7 +71,7 @@ function CapsuleToggle({ mode, onChange }: { mode: AuthMode; onChange: (m: AuthM
   );
 }
 
-// ─── Password Input with show/hide ───
+// ─── Password Input with eye icon ───
 function PasswordInput({ value, onChangeText }: { value: string; onChangeText: (v: string) => void }) {
   const [visible, setVisible] = useState(false);
   return (
@@ -83,8 +83,9 @@ function PasswordInput({ value, onChangeText }: { value: string; onChangeText: (
         className={cn(clayInput, 'w-full pr-12')}
       />
       <Pressable onPress={() => setVisible(v => !v)}
-        style={{ position: 'absolute', right: 8, top: 0, bottom: 0, width: 40, alignItems: 'center', justifyContent: 'center' }}>
-        <Text className="text-base text-muted">{visible ? 'HIDE' : 'SHOW'}</Text>
+        style={{ position: 'absolute', right: 12, top: 0, bottom: 0, width: 40, alignItems: 'center', justifyContent: 'center' }}
+        accessibilityLabel={visible ? 'Hide password' : 'Show password'}>
+        <Ionicons name={visible ? 'eye-off' : 'eye'} size={20} color={CLAY.muted} />
       </Pressable>
     </View>
   );
@@ -143,14 +144,14 @@ export default function AuthScreen() {
   const [password, setPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [resendTimer, setResendTimer] = useState(30);
+  const [autoSubmitting, setAutoSubmitting] = useState(false);
 
   const showOTP = step === 'otp-sent';
   const showPassword = mode === 'signup';
 
-  // Crossfade opacities — Reanimated shared values
+  // Crossfade opacities
   const loginOpacity = useSharedValue(1);
   const signupOpacity = useSharedValue(0);
-
   const passwordHeight = useSharedValue(0);
   const passwordOpacity = useSharedValue(0);
 
@@ -164,9 +165,9 @@ export default function AuthScreen() {
     return () => clearInterval(interval);
   }, [showOTP, resendTimer]);
 
-  // Animate text crossfades when mode changes
+  // Animate crossfades
   useEffect(() => {
-    if (showOTP) return; // Don't animate during OTP
+    if (showOTP) return;
     loginOpacity.value = withTiming(mode === 'login' ? 1 : 0, { duration: 200 });
     signupOpacity.value = withTiming(mode === 'signup' ? 1 : 0, { duration: 200 });
   }, [mode, showOTP, loginOpacity, signupOpacity]);
@@ -176,39 +177,47 @@ export default function AuthScreen() {
     passwordOpacity.value = withTiming(showPassword ? 1 : 0, { duration: 300 });
   }, [showPassword, passwordHeight, passwordOpacity]);
 
-  const loginFadeStyle = useAnimatedStyle(() => ({
-    opacity: loginOpacity.value,
-  }));
-
-  const signupFadeStyle = useAnimatedStyle(() => ({
-    opacity: signupOpacity.value,
-  }));
-
+  const loginFadeStyle = useAnimatedStyle(() => ({ opacity: loginOpacity.value }));
+  const signupFadeStyle = useAnimatedStyle(() => ({ opacity: signupOpacity.value }));
   const passwordContainerStyle = useAnimatedStyle(() => ({
     height: passwordHeight.value,
     opacity: passwordOpacity.value,
   }));
 
-  // Shake animation for OTP errors
+  // Shake for OTP errors
   const { shake, animatedStyle: shakeStyle } = useShakeAnimation();
   useEffect(() => {
     if (error && showOTP) shake();
   }, [error, showOTP, shake]);
 
-  async function handleContinue() {
+  const handleContinue = useCallback(async () => {
     if (mode === 'signup') await submitEmailPassword(email, password);
     else await submitEmailOTP(email);
-  }
+  }, [mode, email, password, submitEmailPassword, submitEmailOTP]);
 
-  async function handleVerify() {
-    if (otpCode.length !== 6) return;
+  const handleVerify = useCallback(async () => {
+    if (otpCode.length !== 6 || isLoading) return;
     await submitOTP(otpCode);
-  }
+  }, [otpCode, isLoading, submitOTP]);
 
-  async function handleResend() {
+  // Auto-verify: submit when 6 digits entered (300ms debounce so the last digit renders first)
+  useEffect(() => {
+    if (otpCode.length === 6 && !isLoading && !autoSubmitting) {
+      setAutoSubmitting(true);
+      const timer = setTimeout(() => {
+        handleVerify();
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+    if (otpCode.length < 6) {
+      setAutoSubmitting(false);
+    }
+  }, [otpCode, isLoading, autoSubmitting, handleVerify]);
+
+  const handleResend = useCallback(async () => {
     await resendOTP();
     setResendTimer(30);
-  }
+  }, [resendOTP]);
 
   const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
   const canSubmit = isValidEmail && !isLoading && (mode === 'login' || password.length >= 8);
@@ -217,58 +226,65 @@ export default function AuthScreen() {
   if (showOTP) {
     return (
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView
-          style={{ flex: 1, backgroundColor: CLAY.canvas }}
-          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}
-          keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
-        >
-          <View style={{ width: '100%', maxWidth: 400, alignItems: 'center', gap: 32 }}>
+        <View style={{ flex: 1, backgroundColor: CLAY.canvas, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+          <View style={{ width: '100%', maxWidth: 400, alignItems: 'center', gap: 24 }}>
+            {/* OTP Header */}
             <View className="items-center gap-3 max-w-[320px]">
-              <Text className="text-title-lg font-semibold text-ink tracking-[-0.5px] text-center">
+              <Text className="text-title-lg font-semibold text-ink tracking-[-0.3px] text-center">
                 Verify your email
               </Text>
-              <Text className="text-[15px] leading-[22px] text-muted text-center">
-                Enter the 6-digit code we sent to{' '}
+              <Text className="text-body-sm text-muted text-center leading-[22px]">
+                Enter the 6-digit code sent to{' '}
                 <Text className="font-semibold text-body-strong">{otpEmail || 'your email'}</Text>
               </Text>
             </View>
 
+            {/* OTP Input */}
             <Animated.View style={[{ width: '100%' }, shakeStyle]}>
               <OTPInput value={otpCode} onChange={setOtpCode} disabled={isLoading} />
             </Animated.View>
 
-            {error && (
-              <Text className="text-error text-sm text-center max-w-[320px]">{error}</Text>
+            {/* Auto-submit indicator */}
+            {autoSubmitting && !error && (
+              <Text className="text-caption text-muted-soft">Verifying automatically...</Text>
             )}
 
+            {/* Error */}
+            {error && (
+              <Text className="text-error text-sm text-center max-w-[320px] leading-5">{error}</Text>
+            )}
+
+            {/* Manual Verify Button (fallback) */}
             <View className="w-full max-w-[320px]">
               <ClayAnimatedButton
                 variant="primary"
                 onPress={handleVerify}
                 disabled={otpCode.length !== 6 || isLoading}
-                loading={isLoading}
+                loading={isLoading && !autoSubmitting}
                 fullWidth
               >
                 Verify & Continue
               </ClayAnimatedButton>
             </View>
 
+            {/* Resend */}
             <View className="items-center gap-3">
-              <Text className="text-sm text-muted">Didn't receive it?</Text>
+              <Text className="text-caption text-muted">Didn't receive the code?</Text>
               {resendTimer > 0 ? (
-                <Text className="text-sm text-muted-soft">Resend code in {resendTimer}s</Text>
+                <Text className="text-caption text-muted-soft">Resend in {resendTimer}s</Text>
               ) : (
                 <Pressable onPress={handleResend}>
-                  <Text className="text-sm text-brand-teal font-semibold">Resend code</Text>
+                  <Text className="text-caption text-brand-teal font-semibold">Resend code</Text>
                 </Pressable>
               )}
             </View>
 
+            {/* Go back */}
             <Pressable onPress={() => { setOtpCode(''); setMode(mode); }}>
-              <Text className="text-sm text-muted">← Go back</Text>
+              <Text className="text-caption text-muted">← Change email</Text>
             </Pressable>
           </View>
-        </ScrollView>
+        </View>
       </KeyboardAvoidingView>
     );
   }
@@ -276,25 +292,21 @@ export default function AuthScreen() {
   // ─── FORM VIEW ───
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-      <ScrollView
-        style={{ flex: 1, backgroundColor: CLAY.canvas }}
-        contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}
-        keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}
-      >
-        <View style={{ width: '100%', maxWidth: 400, alignItems: 'center', gap: 24 }}>
+      <View style={{ flex: 1, backgroundColor: CLAY.canvas, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
+        <View style={{ width: '100%', maxWidth: 400, alignItems: 'center', gap: 20 }}>
           {/* Brand */}
-          <View style={{ alignItems: 'center', gap: 8 }}>
+          <View style={{ alignItems: 'center', gap: 6 }}>
             <Text className="text-display-sm font-medium text-ink tracking-[-0.5px] text-center">
               Creator Workspace
             </Text>
-            <View style={{ height: 48, alignItems: 'center', justifyContent: 'center' }}>
+            <View style={{ height: 44, alignItems: 'center', justifyContent: 'center' }}>
               <Animated.View style={[{ position: 'absolute', alignItems: 'center' }, loginFadeStyle]}>
-                <Text className="text-base text-muted text-center leading-6">
+                <Text className="text-body-md text-muted text-center leading-6">
                   Welcome back! Sign in to continue.
                 </Text>
               </Animated.View>
               <Animated.View style={[{ position: 'absolute', alignItems: 'center' }, signupFadeStyle]}>
-                <Text className="text-base text-muted text-center leading-6">
+                <Text className="text-body-md text-muted text-center leading-6">
                   Create your account to get started.
                 </Text>
               </Animated.View>
@@ -316,16 +328,14 @@ export default function AuthScreen() {
               />
             </View>
 
-            {/* Password — animated height/opacity container handles the transition */}
+            {/* Password */}
             <Animated.View style={[{ width: '100%', overflow: 'hidden' }, passwordContainerStyle]}>
               <PasswordInput value={password} onChangeText={setPassword} />
             </Animated.View>
 
             {/* Error */}
             {error && (
-              <Text className="text-error text-sm text-center max-w-[320px] leading-5">
-                {error}
-              </Text>
+              <Text className="text-error text-sm text-center max-w-[320px] leading-5">{error}</Text>
             )}
 
             {/* Submit */}
@@ -340,10 +350,10 @@ export default function AuthScreen() {
                 ) : (
                   <View style={{ height: 20, alignItems: 'center', justifyContent: 'center' }}>
                     <Animated.View style={[{ position: 'absolute' }, loginFadeStyle]}>
-                      <Text className="text-on-primary font-semibold text-[15px]">Continue with Email</Text>
+                      <Text className="text-button font-semibold text-on-primary">Continue with Email</Text>
                     </Animated.View>
                     <Animated.View style={[{ position: 'absolute' }, signupFadeStyle]}>
-                      <Text className="text-on-primary font-semibold text-[15px]">Create Account</Text>
+                      <Text className="text-button font-semibold text-on-primary">Create Account</Text>
                     </Animated.View>
                   </View>
                 )}
@@ -372,10 +382,10 @@ export default function AuthScreen() {
           </View>
 
           {/* Helper */}
-          <View style={{ height: 40, alignItems: 'center', justifyContent: 'center' }}>
+          <View style={{ height: 36, alignItems: 'center', justifyContent: 'center' }}>
             <Animated.View style={[{ position: 'absolute', alignItems: 'center', paddingHorizontal: 24 }, loginFadeStyle]}>
               <Text className="text-caption text-muted-soft text-center">
-                We'll send you a verification code to sign in securely.
+                We'll send you a verification code to sign in.
               </Text>
             </Animated.View>
             <Animated.View style={[{ position: 'absolute', alignItems: 'center', paddingHorizontal: 24 }, signupFadeStyle]}>
@@ -385,7 +395,7 @@ export default function AuthScreen() {
             </Animated.View>
           </View>
         </View>
-      </ScrollView>
+      </View>
     </KeyboardAvoidingView>
   );
 }
