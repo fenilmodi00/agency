@@ -11,7 +11,7 @@
     "lint": "tsc --noEmit"
   },
   "dependencies": {
-    "@clerk/clerk-expo": "^2.19.31",
+    "@clerk/clerk-expo": "2.19.42",
     "@expo-google-fonts/inter": "^0.4.2",
     "@testing-library/react-native": "^14.0.1",
     "@types/jest": "~29",

@@ -28,20 +28,20 @@ interface UseAuthFlowReturn {
   resendOTP: () => Promise<void>;
 }
 
-function extractClerkError(err: any): string {
+function clerkErr(err: any): string {
   return (
-    err.errors?.[0]?.longMessage ||
-    err.errors?.[0]?.message ||
-    err.longMessage ||
-    err.message ||
+    err?.errors?.[0]?.longMessage ||
+    err?.errors?.[0]?.message ||
+    err?.longMessage ||
+    err?.message ||
     'Something went wrong'
   );
 }
 
 export function useAuthFlow(): UseAuthFlowReturn {
   const router = useRouter();
-  const { signIn, isLoaded: signInLoaded, setActive: setSignInActive } = useSignIn();
-  const { signUp, isLoaded: signUpLoaded, setActive: setSignUpActive } = useSignUp();
+  const { signIn, isLoaded: signInLoaded } = useSignIn();
+  const { signUp, isLoaded: signUpLoaded } = useSignUp();
   const { startOAuthFlow } = useOAuth({ strategy: 'oauth_google' });
 
   const [state, setState] = useState<AuthState>({
@@ -64,211 +64,188 @@ export function useAuthFlow(): UseAuthFlowReturn {
     setState((s) => ({ ...s, isLoading }));
   }, []);
 
-  const setError = useCallback((error: string | null) => {
-    setState((s) => ({ ...s, step: error ? 'error' : s.step, error }));
-  }, []);
-
-  const navigateToHome = useCallback(() => {
+  const navigateHome = useCallback(() => {
     router.replace('/(tabs)/(home)');
   }, [router]);
 
-  // ─── Email + Password Sign-Up (then OTP verify) ───
-  const submitEmailPassword = useCallback(
-    async (email: string, password: string) => {
-      if (!signUpLoaded) return;
-      setLoading(true);
-      setError(null);
-      emailRef.current = email;
-      passwordRef.current = password;
+  const submitEmailPassword = useCallback(async (email: string, password: string) => {
+    if (!signUpLoaded || !signUp) return;
+    setLoading(true);
+    setState((s) => ({ ...s, error: null }));
+    emailRef.current = email;
+    passwordRef.current = password;
 
-      try {
-        const result = await signUp.create({ emailAddress: email, password });
+    const future = signUp.__internal_future;
+    const { error } = await future.password({ emailAddress: email, password });
+    if (error) {
+      setState((s) => ({ ...s, step: 'error', error: clerkErr(error) }));
+      setLoading(false);
+      return;
+    }
 
-        if (result.status === 'complete') {
-          await setSignUpActive({ session: result.createdSessionId });
-          setState((s) => ({ ...s, step: 'complete' }));
-          navigateToHome();
-          return;
-        }
+    if (signUp.status === 'complete') {
+      const { error: finErr } = await future.finalize({ navigate: () => navigateHome() });
+      if (finErr) {
+        setState((s) => ({ ...s, step: 'error', error: clerkErr(finErr) }));
+      } else {
+        setState((s) => ({ ...s, step: 'complete' }));
+      }
+      setLoading(false);
+      return;
+    }
 
-        // Send email verification code
-        await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
+    const { error: sendErr } = await future.verifications.sendEmailCode();
+    if (sendErr) {
+      setState((s) => ({ ...s, step: 'error', error: clerkErr(sendErr) }));
+      setLoading(false);
+      return;
+    }
 
+    setState((s) => ({
+      ...s,
+      step: 'otp-sent',
+      email,
+      pendingIdentifier: email,
+    }));
+    setLoading(false);
+  }, [signUpLoaded, signUp, setLoading, navigateHome]);
+
+  const submitEmailOTP = useCallback(async (email: string) => {
+    if (!signInLoaded || !signIn) return;
+    setLoading(true);
+    setState((s) => ({ ...s, error: null }));
+    emailRef.current = email;
+
+    const future = signIn.__internal_future;
+    const { error } = await future.create({ identifier: email, strategy: 'email_code' });
+    if (error) {
+      setState((s) => ({ ...s, step: 'error', error: clerkErr(error) }));
+      setLoading(false);
+      return;
+    }
+
+    if (signIn.status === 'complete') {
+      const { error: finErr } = await future.finalize({ navigate: () => navigateHome() });
+      if (finErr) {
+        setState((s) => ({ ...s, step: 'error', error: clerkErr(finErr) }));
+      } else {
+        setState((s) => ({ ...s, step: 'complete' }));
+      }
+      setLoading(false);
+      return;
+    }
+
+    const { error: sendErr } = await future.emailCode.sendCode();
+    if (sendErr) {
+      setState((s) => ({ ...s, step: 'error', error: clerkErr(sendErr) }));
+      setLoading(false);
+      return;
+    }
+
+    setState((s) => ({
+      ...s,
+      step: 'otp-sent',
+      email,
+      pendingIdentifier: email,
+    }));
+    setLoading(false);
+  }, [signInLoaded, signIn, setLoading, navigateHome]);
+
+  const submitOTP = useCallback(async (code: string) => {
+    if (!signInLoaded && !signUpLoaded) return;
+    setLoading(true);
+    setState((s) => ({ ...s, error: null }));
+
+    if (state.mode === 'signup' && signUp) {
+      const future = signUp.__internal_future;
+      const { error } = await future.verifications.verifyEmailCode({ code });
+      if (error) {
+        setState((s) => ({ ...s, step: 'otp-sent', error: clerkErr(error) }));
+        setLoading(false);
+        return;
+      }
+
+      if (signUp.status !== 'complete') {
         setState((s) => ({
           ...s,
           step: 'otp-sent',
-          email,
-          pendingIdentifier: email,
+          error: 'Verification incomplete. Please try again.',
         }));
-      } catch (err: any) {
-        setError(extractClerkError(err));
-      } finally {
         setLoading(false);
+        return;
       }
-    },
-    [signUpLoaded, signUp, setSignUpActive, setLoading, setError, navigateToHome]
-  );
 
-  // ─── Email OTP Login (passwordless) ───
-  const submitEmailOTP = useCallback(
-    async (email: string) => {
-      if (!signInLoaded) return;
-      setLoading(true);
-      setError(null);
-      emailRef.current = email;
+      const { error: finErr } = await future.finalize({ navigate: () => navigateHome() });
+      if (finErr) {
+        setState((s) => ({ ...s, step: 'otp-sent', error: clerkErr(finErr) }));
+      } else {
+        setState((s) => ({ ...s, step: 'complete' }));
+      }
+    } else if (signIn) {
+      const future = signIn.__internal_future;
+      const { error } = await future.emailCode.verifyCode({ code });
+      if (error) {
+        setState((s) => ({ ...s, step: 'otp-sent', error: clerkErr(error) }));
+        setLoading(false);
+        return;
+      }
 
-      try {
-        const result = await signIn.create({ identifier: email });
-
-        if (result.status === 'complete') {
-          await setSignInActive({ session: result.createdSessionId });
-          setState((s) => ({ ...s, step: 'complete' }));
-          navigateToHome();
-          return;
-        }
-
-        const emailCodeFactor = result.supportedFirstFactors?.find(
-          (f): f is { strategy: 'email_code'; emailAddressId: string } =>
-            f.strategy === 'email_code'
-        );
-        if (!emailCodeFactor?.emailAddressId) {
-          throw new Error('Email code sign-in is not available');
-        }
-
-        await result.prepareFirstFactor({
-          strategy: 'email_code',
-          emailAddressId: emailCodeFactor.emailAddressId,
-        });
-
+      if (signIn.status !== 'complete') {
         setState((s) => ({
           ...s,
           step: 'otp-sent',
-          email,
-          pendingIdentifier: email,
+          error: 'Verification incomplete. Please try again.',
         }));
-      } catch (err: any) {
-        setError(extractClerkError(err));
-      } finally {
         setLoading(false);
+        return;
       }
-    },
-    [signInLoaded, signIn, setSignInActive, setLoading, setError, navigateToHome]
-  );
 
-  // ─── Verify OTP (shared for login & sign-up) ───
-  const submitOTP = useCallback(
-    async (code: string) => {
-      if (!signInLoaded && !signUpLoaded) return;
-      setLoading(true);
-      setError(null);
-
-      try {
-        if (state.mode === 'signup' && signUp) {
-          const result = await signUp.attemptEmailAddressVerification({ code });
-
-          if (result.status === 'complete') {
-            await setSignUpActive({ session: result.createdSessionId });
-            setState((s) => ({ ...s, step: 'complete' }));
-            navigateToHome();
-          } else {
-            setState((s) => ({
-              ...s,
-              step: 'otp-sent',
-              error: 'Verification incomplete. Please try again.',
-            }));
-          }
-        } else if (signIn) {
-          const result = await signIn.attemptFirstFactor({
-            strategy: 'email_code',
-            code,
-          });
-
-          if (result.status === 'complete') {
-            await setSignInActive({ session: result.createdSessionId });
-            setState((s) => ({ ...s, step: 'complete' }));
-            navigateToHome();
-          } else {
-            setState((s) => ({
-              ...s,
-              step: 'otp-sent',
-              error: 'Verification incomplete. Please try again.',
-            }));
-          }
-        }
-      } catch (err: any) {
-        setState((s) => ({
-          ...s,
-          step: 'otp-sent',
-          error: extractClerkError(err),
-        }));
-      } finally {
-        setLoading(false);
+      const { error: finErr } = await future.finalize({ navigate: () => navigateHome() });
+      if (finErr) {
+        setState((s) => ({ ...s, step: 'otp-sent', error: clerkErr(finErr) }));
+      } else {
+        setState((s) => ({ ...s, step: 'complete' }));
       }
-    },
-    [
-      state.mode,
-      signInLoaded,
-      signUpLoaded,
-      signIn,
-      signUp,
-      setSignInActive,
-      setSignUpActive,
-      setLoading,
-      setError,
-      navigateToHome,
-    ]
-  );
+    }
 
-  // ─── Resend OTP ───
+    setLoading(false);
+  }, [state.mode, signInLoaded, signUpLoaded, signIn, signUp, setLoading, navigateHome]);
+
   const resendOTP = useCallback(async () => {
     if (!emailRef.current) return;
     setLoading(true);
-    setError(null);
+    setState((s) => ({ ...s, error: null }));
 
-    try {
-      if (state.mode === 'signup' && signUp) {
-        await signUp.prepareEmailAddressVerification({ strategy: 'email_code' });
-      } else if (signIn) {
-        const result = await signIn.create({ identifier: emailRef.current });
-        const emailCodeFactor = result.supportedFirstFactors?.find(
-          (f): f is { strategy: 'email_code'; emailAddressId: string } =>
-            f.strategy === 'email_code'
-        );
-        if (!emailCodeFactor?.emailAddressId) {
-          throw new Error('Email code sign-in is not available');
-        }
-        await result.prepareFirstFactor({
-          strategy: 'email_code',
-          emailAddressId: emailCodeFactor.emailAddressId,
-        });
-      }
-    } catch (err: any) {
-      setError(extractClerkError(err));
-    } finally {
-      setLoading(false);
+    if (state.mode === 'signup' && signUp) {
+      const { error } = await signUp.__internal_future.verifications.sendEmailCode();
+      if (error) setState((s) => ({ ...s, error: clerkErr(error) }));
+    } else if (signIn) {
+      const { error } = await signIn.__internal_future.emailCode.sendCode();
+      if (error) setState((s) => ({ ...s, error: clerkErr(error) }));
     }
-  }, [state.mode, signIn, signUp, setLoading, setError]);
 
-  // ─── Google OAuth ───
+    setLoading(false);
+  }, [state.mode, signIn, signUp, setLoading]);
+
   const loginWithGoogle = useCallback(async () => {
     setLoading(true);
-    setError(null);
+    setState((s) => ({ ...s, error: null }));
 
     try {
       const { createdSessionId, setActive } = await startOAuthFlow();
       if (createdSessionId) {
         await setActive!({ session: createdSessionId });
         setState((s) => ({ ...s, step: 'complete' }));
-        navigateToHome();
+        navigateHome();
       } else {
-        setError('Google sign-in was cancelled');
+        setState((s) => ({ ...s, error: 'Google sign-in was cancelled' }));
       }
     } catch (err: any) {
-      setError(extractClerkError(err));
+      setState((s) => ({ ...s, error: clerkErr(err) }));
     } finally {
       setLoading(false);
     }
-  }, [startOAuthFlow, setLoading, setError, navigateToHome]);
+  }, [startOAuthFlow, setLoading, navigateHome]);
 
   return {
     mode: state.mode,

@@ -19,11 +19,14 @@ module.exports = {
   }),
   useSignIn: () => ({
     signIn: {
-      create: jest
-        .fn()
-        .mockResolvedValue({ status: 'needs_first_factor', supportedFirstFactors: [{ strategy: 'email_code', emailAddressId: 'test-id' }] }),
-      prepareFirstFactor: jest.fn().mockResolvedValue(undefined),
-      attemptFirstFactor: jest.fn().mockResolvedValue({ status: 'complete', createdSessionId: 'test-session' }),
+      __internal_future: {
+        create: jest.fn().mockResolvedValue({ error: null }),
+        emailCode: {
+          sendCode: jest.fn().mockResolvedValue({ error: null }),
+          verifyCode: jest.fn().mockResolvedValue({ error: null }),
+        },
+        finalize: jest.fn().mockResolvedValue({ error: null }),
+      },
       status: 'needs_first_factor',
     },
     setActive: jest.fn().mockResolvedValue(undefined),
@@ -31,9 +34,14 @@ module.exports = {
   }),
   useSignUp: () => ({
     signUp: {
-      create: jest.fn().mockResolvedValue({ status: 'missing_requirements' }),
-      prepareEmailAddressVerification: jest.fn().mockResolvedValue(undefined),
-      attemptEmailAddressVerification: jest.fn().mockResolvedValue({ status: 'complete', createdSessionId: 'test-session' }),
+      __internal_future: {
+        password: jest.fn().mockResolvedValue({ error: null }),
+        verifications: {
+          sendEmailCode: jest.fn().mockResolvedValue({ error: null }),
+          verifyEmailCode: jest.fn().mockResolvedValue({ error: null }),
+        },
+        finalize: jest.fn().mockResolvedValue({ error: null }),
+      },
       status: 'missing_requirements',
     },
     setActive: jest.fn().mockResolvedValue(undefined),
