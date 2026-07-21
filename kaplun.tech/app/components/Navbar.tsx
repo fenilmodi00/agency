@@ -4,10 +4,10 @@ import { useState, useEffect, useRef } from "react";
 import { Logo } from "./Logo";
 
 interface NavbarProps {
-  onOpenWaitlist: () => void;
+  onOpenWaitlist?: () => void;
 }
 
-export function Navbar({ onOpenWaitlist }: NavbarProps) {
+export function Navbar({ onOpenWaitlist = () => {} }: NavbarProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -93,8 +93,7 @@ export function Navbar({ onOpenWaitlist }: NavbarProps) {
         <div className={`kaplun-capsule-bar ${isScrolled ? "scrolled" : "top"}`}>
           {/* Brand Logo */}
           <a
-            href="#"
-            onClick={(e) => handleNavClick(e, "#")}
+            href="/#"
             style={{
               fontSize: "20px",
               fontWeight: 700,
@@ -200,7 +199,8 @@ export function Navbar({ onOpenWaitlist }: NavbarProps) {
           >
             {/* Drawer Header */}
             <div className="kaplun-mobile-card-header">
-              <span
+              <a
+                href="/"
                 style={{
                   fontSize: "18px",
                   fontWeight: 700,
@@ -209,11 +209,12 @@ export function Navbar({ onOpenWaitlist }: NavbarProps) {
                   display: "flex",
                   alignItems: "center",
                   gap: "8px",
+                  textDecoration: "none",
                 }}
               >
                 <Logo size={24} />
                 <span>Kaplun</span>
-              </span>
+              </a>
 
               <button
                 type="button"

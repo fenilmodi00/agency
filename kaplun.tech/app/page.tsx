@@ -360,9 +360,12 @@ export default function Home() {
               <div>
                 <h5 style={{ fontSize: "var(--clay-body-sm)", fontWeight: 600, color: "var(--clay-ink)", marginBottom: "var(--clay-spacing-sm)" }}>Legal</h5>
                 <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                  {["Privacy", "Terms"].map((item) => (
-                    <li key={item} style={{ marginBottom: "var(--clay-spacing-xs)" }}>
-                      <a href={`#${item.toLowerCase()}`} style={{ fontSize: "var(--clay-body-sm)", color: "var(--clay-muted)", textDecoration: "none" }}>{item}</a>
+                  {[
+                    { name: "Privacy", href: "/privacy-policy" },
+                    { name: "Terms", href: "#terms" },
+                  ].map((item) => (
+                    <li key={item.name} style={{ marginBottom: "var(--clay-spacing-xs)" }}>
+                      <a href={item.href} style={{ fontSize: "var(--clay-body-sm)", color: "var(--clay-muted)", textDecoration: "none" }}>{item.name}</a>
                     </li>
                   ))}
                 </ul>
